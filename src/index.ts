@@ -41,9 +41,9 @@ type Node = string
 
 
 
-type ReplicatedCounter = { [id: string]: number | undefined }
+type GrowOnlyCounter = { [id: string]: number | undefined }
 
-function valueOfReplicatedCounter(replicatedCounter: ReplicatedCounter) {
+function valueOfReplicatedCounter(replicatedCounter: GrowOnlyCounter) {
   let value = 0
   for (var nodeId in replicatedCounter) {
     value += replicatedCounter[nodeId]!
@@ -51,8 +51,8 @@ function valueOfReplicatedCounter(replicatedCounter: ReplicatedCounter) {
   return value
 }
 
-function mergeReplicatedCounter(a: ReplicatedCounter, b: ReplicatedCounter): ReplicatedCounter {
-  let object: ReplicatedCounter = {}
+function mergeReplicatedCounter(a: GrowOnlyCounter, b: GrowOnlyCounter): GrowOnlyCounter {
+  let object: GrowOnlyCounter = {}
   for (var nodeId in a) {
     object[nodeId] = a[nodeId]
   }
@@ -62,6 +62,12 @@ function mergeReplicatedCounter(a: ReplicatedCounter, b: ReplicatedCounter): Rep
     }
   }
   return object
+}
+
+function incrementGrowOnlyCounter(growOnlyCounter: GrowOnlyCounter, id: string, increment: number): GrowOnlyCounter {
+  return Object.assign({}, growOnlyCounter, {
+    [id]: (growOnlyCounter[id] || 0) + increment
+  })
 }
 
 
@@ -136,16 +142,20 @@ function updateLastWriterWins(lastWriterWins: LastWriterWins, id: string, value:
 
 
 
+type GrowOnlySet = { [id: string]: any }
+
+
+
 
 
 
 let node1: Node = "node1"
-let counter1: ReplicatedCounter = { [node1]: 2 }
+let counter1: GrowOnlyCounter = { [node1]: 2 }
 console.log(counter1)
 console.log(valueOfReplicatedCounter(counter1))
 
 let node2: Node = "node2"
-let counter2: ReplicatedCounter = { [node2]: 1 }
+let counter2: GrowOnlyCounter = incrementGrowOnlyCounter(counter1, node2, 10)
 console.log(counter2)
 console.log(valueOfReplicatedCounter(counter2))
 
@@ -166,12 +176,16 @@ console.log("lww12", lww12)
 let lww21 = mergeLastWriterWins(lww2, lww1)
 console.log("lww21", lww21)
 
-// TODO FIXME crdt resolve partial order
-/*
-Note: totally-ordered timestamps are not trivial to implement. Vector clocks, for instance, only provide a partial order, as differing values can be equivalent. (Consider, for instance, <1,2> vs <2,1>, which signify concurrent events on two nodes.) A weak but simple solution is to use the addresses of the nodes in the ordering (node at "A" precedes the node at "B"). This provides a deterministic answer, and thus a total ordering, but it is not semantically meaningful to the application.
-*/
+if (lww12 !== lww21) throw new Error("assert")
 
+let lww211 = updateLastWriterWins(lww21, node1, "Technik")
+console.log("lww211", lww211)
 
+let lww212 = updateLastWriterWins(lww21, node2, "Technik AG")
+console.log("lww212", lww212)
+
+let lww21x = mergeLastWriterWins(lww211, lww212)
+console.log("lww21x", lww21x)
 
 
 // user count (just for fun)
@@ -218,7 +232,9 @@ max_participants (int)              - lww
 presentation_type (string)          - plaintext
 requirements (string)               - plaintext
 random_assignments (bool)           - false wins
+
 all of these first just setting values - show conflicts to user
+
 user (TODO split up in types):
 name (string)                       - lww? / plaintext
 password [CRDT PROBLEM]             - lww?
@@ -230,6 +246,7 @@ away bool                           - false wins
 password_changed (bool -> converges to true) - true wins
 in_project project                  - last writer wins / log conflict
 mostly just setting values - show conflicts to user / last writer wins - text could be merged
+
 choice: (this has to be done properly)
 rank int                            - last writer wins (time based as it is per user?)
 project project                     - unchanable
