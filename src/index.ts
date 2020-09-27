@@ -21,29 +21,18 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-export {}
-
-// design:
-
-// nodes: (a few servers, several hundred clients)
 
 // use a public key so the change is also signed (allows decentralized replication in the future)
 // sign it by the server
 
-// currently just use a counter per node for its latest state
-// this simple implementation probably uses too much storage
-
-
 // https://github.com/yjs/yjs
 // https://www.youtube.com/watch?v=0l5XgnQ6rB4&feature=youtu.be
 
-type Node = string
+export type Node = string
 
+export type GrowOnlyCounter = { [id: string]: number | undefined }
 
-
-type GrowOnlyCounter = { [id: string]: number | undefined }
-
-function valueOfReplicatedCounter(replicatedCounter: GrowOnlyCounter) {
+export function valueOfReplicatedCounter(replicatedCounter: GrowOnlyCounter) {
   let value = 0
   for (var nodeId in replicatedCounter) {
     value += replicatedCounter[nodeId]!
@@ -51,7 +40,7 @@ function valueOfReplicatedCounter(replicatedCounter: GrowOnlyCounter) {
   return value
 }
 
-function mergeReplicatedCounter(a: GrowOnlyCounter, b: GrowOnlyCounter): GrowOnlyCounter {
+export function mergeReplicatedCounter(a: GrowOnlyCounter, b: GrowOnlyCounter): GrowOnlyCounter {
   let object: GrowOnlyCounter = {}
   for (var nodeId in a) {
     object[nodeId] = a[nodeId]
@@ -64,7 +53,7 @@ function mergeReplicatedCounter(a: GrowOnlyCounter, b: GrowOnlyCounter): GrowOnl
   return object
 }
 
-function incrementGrowOnlyCounter(growOnlyCounter: GrowOnlyCounter, id: string, increment: number): GrowOnlyCounter {
+export function incrementGrowOnlyCounter(growOnlyCounter: GrowOnlyCounter, id: string, increment: number): GrowOnlyCounter {
   return Object.assign({}, growOnlyCounter, {
     [id]: (growOnlyCounter[id] || 0) + increment
   })
@@ -72,17 +61,17 @@ function incrementGrowOnlyCounter(growOnlyCounter: GrowOnlyCounter, id: string, 
 
 
 
-type FalseWins = boolean
+export type FalseWins = boolean
 
-function mergeFalseWins(a: FalseWins, b: FalseWins) {
+export function mergeFalseWins(a: FalseWins, b: FalseWins) {
   return a && b
 }
 
 
 
-type TrueWins = boolean
+export type TrueWins = boolean
 
-function mergeTrueWins(a: TrueWins, b: TrueWins) {
+export function mergeTrueWins(a: TrueWins, b: TrueWins) {
   return a || b
 }
 
@@ -90,13 +79,13 @@ function mergeTrueWins(a: TrueWins, b: TrueWins) {
 
 
 
-type LastWriterWins = [object: any, id: string, vectors: { [id: string]: number | undefined }]
+export type LastWriterWins = [object: any, id: string, vectors: { [id: string]: number | undefined }]
 
-function valueOfLastWriterWins(lastWriterWins: LastWriterWins) {
+export function valueOfLastWriterWins(lastWriterWins: LastWriterWins) {
   return lastWriterWins[0];
 }
 
-function mergeLastWriterWins(a: LastWriterWins, b: LastWriterWins): LastWriterWins {
+export function mergeLastWriterWins(a: LastWriterWins, b: LastWriterWins): LastWriterWins {
   let aStrictlyGreaterThanB = false
   let aGreaterThanB = true
   let bStrictlyGreaterThanA = false
@@ -133,7 +122,7 @@ function mergeLastWriterWins(a: LastWriterWins, b: LastWriterWins): LastWriterWi
   }
 }
 
-function updateLastWriterWins(lastWriterWins: LastWriterWins, id: string, value: any): LastWriterWins {
+export function updateLastWriterWins(lastWriterWins: LastWriterWins, id: string, value: any): LastWriterWins {
   return [value, id, Object.assign({}, lastWriterWins[2], {
     [id]: (lastWriterWins[2][id] || 0) + 1
   })]
@@ -142,9 +131,9 @@ function updateLastWriterWins(lastWriterWins: LastWriterWins, id: string, value:
 
 
 
-type GrowOnlySet = [lastId: number, value: { [id: string]: any }]
+export type GrowOnlySet = [lastId: number, value: { [id: string]: any }]
 
-function addToGrowOnlySet(growOnlySet: GrowOnlySet, id: string, add: any): GrowOnlySet {
+export function addToGrowOnlySet(growOnlySet: GrowOnlySet, id: string, add: any): GrowOnlySet {
   if ((id+(growOnlySet[0] + 1)) in growOnlySet) {
     throw new Error("internal consistency problem")
   }
@@ -154,65 +143,13 @@ function addToGrowOnlySet(growOnlySet: GrowOnlySet, id: string, add: any): GrowO
 }
 
 // TODO FIXME first one has to be self
-function mergeGrowOnlySet(self: GrowOnlySet, update: GrowOnlySet): GrowOnlySet {
+export function mergeGrowOnlySet(self: GrowOnlySet, update: GrowOnlySet): GrowOnlySet {
   return [self[0], Object.assign({}, self[1], update[1])]
 }
 
 
 
 
-
-let node1: Node = "node1"
-let counter1: GrowOnlyCounter = { [node1]: 2 }
-console.log(counter1)
-console.log(valueOfReplicatedCounter(counter1))
-
-let node2: Node = "node2"
-let counter2: GrowOnlyCounter = incrementGrowOnlyCounter(counter1, node2, 10)
-console.log(counter2)
-console.log(valueOfReplicatedCounter(counter2))
-
-let counter12 = mergeReplicatedCounter(counter1, counter2)
-console.log(counter12)
-console.log(valueOfReplicatedCounter(counter12))
-
-
-let lww1: LastWriterWins = ["Technik", node1, { [node1]: 1 }]
-console.log("lww1", lww1)
-
-let lww2 = updateLastWriterWins(lww1, node2, "Technik-AG")
-console.log("lww2", lww2)
-
-let lww12 = mergeLastWriterWins(lww1, lww2)
-console.log("lww12", lww12)
-
-let lww21 = mergeLastWriterWins(lww2, lww1)
-console.log("lww21", lww21)
-
-if (lww12 !== lww21) throw new Error("assert")
-
-let lww211 = updateLastWriterWins(lww21, node1, "Technik")
-console.log("lww211", lww211)
-
-let lww212 = updateLastWriterWins(lww21, node2, "Technik AG")
-console.log("lww212", lww212)
-
-let lww21x = mergeLastWriterWins(lww211, lww212)
-console.log("lww21x", lww21x)
-
-
-
-
-let gos: GrowOnlySet = [0, {}]
-
-let gos1 = addToGrowOnlySet(gos, node1, "node1eeee")
-console.log(gos1)
-
-let gos2 = addToGrowOnlySet(gos, node2, "node2eeeee")
-console.log(gos2)
-
-let gosx = mergeGrowOnlySet(gos1, gos2)
-console.log(gosx)
 
 // user count (just for fun)
 
