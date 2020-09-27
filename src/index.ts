@@ -21,21 +21,66 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
+export {}
 
-/**
- * This file is just a silly example to show everything working in the browser.
- * When you're ready to start on your site, clear the file. Happy hacking!
- **/
+// design:
 
-import confetti from 'canvas-confetti';
+// nodes: (a few servers, several hundred clients)
 
-confetti.create(document.getElementById('canvas') as HTMLCanvasElement, {
-  resize: true,
-  useWorker: true,
-})({ particleCount: 200, spread: 200 });
+// use a public key so the change is also signed (allows decentralized replication in the future)
+// sign it by the server
 
+// currently just use a counter per node for its latest state
+// this simple implementation probably uses too much storage
 
 
+// https://github.com/yjs/yjs
+// https://www.youtube.com/watch?v=0l5XgnQ6rB4&feature=youtu.be
+
+class Node {
+  id: string
+
+  constructor(id: string) {
+    this.id = id
+  }
+}
+
+class VectorClock {
+  id: string
+  value: number
+
+  constructor(id: string, value: number) {
+    this.id = id
+    this.value = value
+  }
+}
+
+class ReplicatedCounter {
+  clock: VectorClock
+  value: number
+
+  constructor(clock: VectorClock, value: number) {
+    this.clock = clock
+    this.value = value
+  }
+
+  increment() {
+    this.value++;
+    this.clock.value++;
+  }
+}
+
+
+let node1: Node = new Node("node1")
+let counter1: ReplicatedCounter = new ReplicatedCounter(new VectorClock(node1.id, 0), 0)
+counter1.increment()
+
+
+let node2: Node = new Node("node1")
+let counter2: ReplicatedCounter = new ReplicatedCounter(new VectorClock(node2.id, 0), 0)
+counter2.increment()
+
+counter1.merge(counter2)
 
 // TODO FIXME crdt resolve partial order
 /*
