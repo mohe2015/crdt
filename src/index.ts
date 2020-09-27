@@ -37,50 +37,57 @@ export {}
 // https://github.com/yjs/yjs
 // https://www.youtube.com/watch?v=0l5XgnQ6rB4&feature=youtu.be
 
-class Node {
-  id: string
+type Node = string
 
-  constructor(id: string) {
-    this.id = id
+
+
+type ReplicatedCounter = { [id: string]: number }
+
+function valueOfReplicatedCounter(replicatedCounter: ReplicatedCounter) {
+  let value = 0
+  for (var nodeId in replicatedCounter) {
+    value += replicatedCounter[nodeId]
   }
+  return value
 }
 
-class VectorClock {
-  id: string
-  value: number
-
-  constructor(id: string, value: number) {
-    this.id = id
-    this.value = value
+function mergeReplicatedCounter(a: ReplicatedCounter, b: ReplicatedCounter): ReplicatedCounter {
+  let object: ReplicatedCounter = {}
+  for (var nodeId in a) {
+    object[nodeId] = a[nodeId]
   }
-}
-
-class ReplicatedCounter {
-  clock: VectorClock
-  value: number
-
-  constructor(clock: VectorClock, value: number) {
-    this.clock = clock
-    this.value = value
+  for (var nodeId in b) {
+    if (!(object[nodeId] > b[nodeId])) { // hack for undefined
+      object[nodeId] = b[nodeId]
+    }
   }
-
-  increment() {
-    this.value++;
-    this.clock.value++;
-  }
+  return object
 }
 
 
-let node1: Node = new Node("node1")
-let counter1: ReplicatedCounter = new ReplicatedCounter(new VectorClock(node1.id, 0), 0)
-counter1.increment()
+
+type FalseWins = boolean
+
+function mergeFalseWins(a: FalseWins, b: FalseWins) {
+  return a && b
+}
 
 
-let node2: Node = new Node("node1")
-let counter2: ReplicatedCounter = new ReplicatedCounter(new VectorClock(node2.id, 0), 0)
-counter2.increment()
 
-counter1.merge(counter2)
+
+let node1: Node = "node1"
+let counter1: ReplicatedCounter = { [node1]: 2 }
+console.log(counter1)
+console.log(valueOfReplicatedCounter(counter1))
+
+let node2: Node = "node2"
+let counter2: ReplicatedCounter = { [node2]: 1 }
+console.log(counter2)
+console.log(valueOfReplicatedCounter(counter2))
+
+let counter12 = mergeReplicatedCounter(counter1, counter2)
+console.log(counter12)
+console.log(valueOfReplicatedCounter(counter12))
 
 // TODO FIXME crdt resolve partial order
 /*
@@ -123,33 +130,35 @@ Note: totally-ordered timestamps are not trivial to implement. Vector clocks, fo
 /*
 biggest problem: HOW TO STORE IN DATABASE? / USE A DECENTRALIZED DATABASE?
 project:
-title (string)
-info (string)
-place (string)
-costs (decimal)
-min_age (int)
-max_age (int)
-min_participants (int)
-max_participants (int)
-presentation_type (string)
-requirements (string)
-random_assignments (bool)
+title (string)                      - plaintext
+info (string)                       - plaintext
+place (string)                      - plaintext
+costs (decimal)                     - last writer wins
+min_age (int)                       - last writer wins
+max_age (int)                       - last writer wins
+min_participants (int)              - last writer wins
+max_participants (int)              - lww
+presentation_type (string)          - plaintext
+requirements (string)               - plaintext
+random_assignments (bool)           - false wins
 all of these first just setting values - show conflicts to user
-user (TODO split up in types / allow changing type?):
-name (string)
-password [CRDT PROBLEM]
-type (enum)
-project_leader project
-class string
-age int
-away bool
-password_changed (bool -> converges to true)
-in_projecct project
+user (TODO split up in types):
+name (string)                       - lww? / plaintext
+password [CRDT PROBLEM]             - lww?
+type (enum)                         - nonchangable
+project_leader project              - lastwriterwins / conflict? / log conflict
+class string                        - lww?
+age int                             - lww
+away bool                           - false wins
+password_changed (bool -> converges to true) - true wins
+in_project project                  - last writer wins / log conflict
 mostly just setting values - show conflicts to user / last writer wins - text could be merged
-choice:
-rank int
-project project
-user user
+choice: (this has to be done properly)
+rank int                            - last writer wins (time based as it is per user?)
+project project                     - unchanable
+user user                           - unchangeable
+delete: conflict 
+
 problem: constraints in a distributed system don't work
 show the errors to users / admin
 store locally in indexeddb
