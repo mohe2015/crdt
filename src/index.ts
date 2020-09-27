@@ -41,12 +41,12 @@ type Node = string
 
 
 
-type ReplicatedCounter = { [id: string]: number }
+type ReplicatedCounter = { [id: string]: number | undefined }
 
 function valueOfReplicatedCounter(replicatedCounter: ReplicatedCounter) {
   let value = 0
   for (var nodeId in replicatedCounter) {
-    value += replicatedCounter[nodeId]
+    value += replicatedCounter[nodeId]!
   }
   return value
 }
@@ -57,7 +57,7 @@ function mergeReplicatedCounter(a: ReplicatedCounter, b: ReplicatedCounter): Rep
     object[nodeId] = a[nodeId]
   }
   for (var nodeId in b) {
-    if (!(object[nodeId] > b[nodeId])) { // hack for undefined
+    if (b[nodeId]! > (object[nodeId] || 0)) {
       object[nodeId] = b[nodeId]
     }
   }
@@ -71,6 +71,69 @@ type FalseWins = boolean
 function mergeFalseWins(a: FalseWins, b: FalseWins) {
   return a && b
 }
+
+
+
+type TrueWins = boolean
+
+function mergeTrueWins(a: TrueWins, b: TrueWins) {
+  return a || b
+}
+
+
+
+
+
+type LastWriterWins = [object: any, id: string, vectors: { [id: string]: number | undefined }]
+
+function valueOfLastWriterWins(lastWriterWins: LastWriterWins) {
+  return lastWriterWins[0];
+}
+
+function mergeLastWriterWins(a: LastWriterWins, b: LastWriterWins): LastWriterWins {
+  let aStrictlyGreaterThanB = true
+  let aGreaterThanB = true
+  let bStrictlyGreaterThanA = true
+  let bGreaterThanA = true
+
+  for (var nodeId in a[2]) {
+    if (a[2][nodeId]! > (b[2][nodeId] || 0)) {
+      aStrictlyGreaterThanB = true
+    }
+    if (a[2][nodeId]! < (b[2][nodeId] || 0)) {
+      aGreaterThanB = false
+    }
+  }
+
+  for (var nodeId in b[2]) {
+    if (b[2][nodeId]! > (a[2][nodeId] || 0)) {
+      bStrictlyGreaterThanA = true
+    }
+    if (b[2][nodeId]! < (a[2][nodeId] || 0)) {
+      bGreaterThanA = false
+    }
+  }
+
+  if (aGreaterThanB && aStrictlyGreaterThanB) {
+    return a[0]
+  } else if (bGreaterThanA && bStrictlyGreaterThanA) {
+    return b[0]
+  } else if (a[1] > b[1]) {
+    return a[0]
+  } else {
+    return b[0]
+  }
+}
+
+// warning: this modified the object, so snapshots don't work
+function updateLastWriterWins(lastWriterWins: LastWriterWins, id: string, value: any) {
+  lastWriterWins[0] = value
+  lastWriterWins[1] = id
+  lastWriterWins[2][id] = (lastWriterWins[2][id] || 0) + 1
+}
+
+
+
 
 
 
