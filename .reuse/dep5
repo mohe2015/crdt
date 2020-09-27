@@ -1,5 +1,5 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: Conflict-free Replicated Data Types in Typescript
+Upstream-Name: crdt
 Upstream-Contact: Moritz Hedtke <Moritz.Hedtke@t-online.de>
 Source: https://github.com/mohe2015/crdt
 
