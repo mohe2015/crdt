@@ -142,8 +142,21 @@ function updateLastWriterWins(lastWriterWins: LastWriterWins, id: string, value:
 
 
 
-type GrowOnlySet = { [id: string]: any }
+type GrowOnlySet = [lastId: number, value: { [id: string]: any }]
 
+function addToGrowOnlySet(growOnlySet: GrowOnlySet, id: string, add: any): GrowOnlySet {
+  if ((id+(growOnlySet[0] + 1)) in growOnlySet) {
+    throw new Error("internal consistency problem")
+  }
+  return [growOnlySet[0] + 1, Object.assign({}, growOnlySet[1], {
+    [id+(growOnlySet[0] + 1)]: add
+  })]
+}
+
+// TODO FIXME first one has to be self
+function mergeGrowOnlySet(self: GrowOnlySet, update: GrowOnlySet): GrowOnlySet {
+  return [self[0], Object.assign({}, self[1], update[1])]
+}
 
 
 
@@ -187,6 +200,19 @@ console.log("lww212", lww212)
 let lww21x = mergeLastWriterWins(lww211, lww212)
 console.log("lww21x", lww21x)
 
+
+
+
+let gos: GrowOnlySet = [0, {}]
+
+let gos1 = addToGrowOnlySet(gos, node1, "node1eeee")
+console.log(gos1)
+
+let gos2 = addToGrowOnlySet(gos, node2, "node2eeeee")
+console.log(gos2)
+
+let gosx = mergeGrowOnlySet(gos1, gos2)
+console.log(gosx)
 
 // user count (just for fun)
 
