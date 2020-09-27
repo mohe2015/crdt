@@ -91,9 +91,9 @@ function valueOfLastWriterWins(lastWriterWins: LastWriterWins) {
 }
 
 function mergeLastWriterWins(a: LastWriterWins, b: LastWriterWins): LastWriterWins {
-  let aStrictlyGreaterThanB = true
+  let aStrictlyGreaterThanB = false
   let aGreaterThanB = true
-  let bStrictlyGreaterThanA = true
+  let bStrictlyGreaterThanA = false
   let bGreaterThanA = true
 
   for (var nodeId in a[2]) {
@@ -115,21 +115,22 @@ function mergeLastWriterWins(a: LastWriterWins, b: LastWriterWins): LastWriterWi
   }
 
   if (aGreaterThanB && aStrictlyGreaterThanB) {
-    return a[0]
+    return a
   } else if (bGreaterThanA && bStrictlyGreaterThanA) {
-    return b[0]
+    return b
   } else if (a[1] > b[1]) {
-    return a[0]
+    console.warn("conflict ", a, b)
+    return a
   } else {
-    return b[0]
+    console.warn("conflict ", b, a)
+    return b
   }
 }
 
-// warning: this modified the object, so snapshots don't work
-function updateLastWriterWins(lastWriterWins: LastWriterWins, id: string, value: any) {
-  lastWriterWins[0] = value
-  lastWriterWins[1] = id
-  lastWriterWins[2][id] = (lastWriterWins[2][id] || 0) + 1
+function updateLastWriterWins(lastWriterWins: LastWriterWins, id: string, value: any): LastWriterWins {
+  return [value, id, Object.assign({}, lastWriterWins[2], {
+    [id]: (lastWriterWins[2][id] || 0) + 1
+  })]
 }
 
 
@@ -151,6 +152,19 @@ console.log(valueOfReplicatedCounter(counter2))
 let counter12 = mergeReplicatedCounter(counter1, counter2)
 console.log(counter12)
 console.log(valueOfReplicatedCounter(counter12))
+
+
+let lww1: LastWriterWins = ["Technik", node1, { [node1]: 1 }]
+console.log("lww1", lww1)
+
+let lww2 = updateLastWriterWins(lww1, node2, "Technik-AG")
+console.log("lww2", lww2)
+
+let lww12 = mergeLastWriterWins(lww1, lww2)
+console.log("lww12", lww12)
+
+let lww21 = mergeLastWriterWins(lww2, lww1)
+console.log("lww21", lww21)
 
 // TODO FIXME crdt resolve partial order
 /*
@@ -193,7 +207,7 @@ Note: totally-ordered timestamps are not trivial to implement. Vector clocks, fo
 /*
 biggest problem: HOW TO STORE IN DATABASE? / USE A DECENTRALIZED DATABASE?
 project:
-title (string)                      - plaintext
+title (string)                      - plaintext (for now lww)
 info (string)                       - plaintext
 place (string)                      - plaintext
 costs (decimal)                     - last writer wins
