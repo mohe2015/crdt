@@ -24,11 +24,11 @@
 
 import type { GrowOnlyCounter, GrowOnlySet,  Node } from "./index.js"
 import { addToGrowOnlySet, incrementGrowOnlyCounter, LastWriterWins, mergeGrowOnlySet, mergeLastWriterWins, mergeReplicatedCounter, updateLastWriterWins, valueOfReplicatedCounter } from "./index.js"
+import { ok, strictEqual } from 'assert';
 
 let node1: Node = "node1"
 let counter1: GrowOnlyCounter = { [node1]: 2 }
-console.log(counter1)
-console.log(valueOfReplicatedCounter(counter1))
+strictEqual(valueOfReplicatedCounter(counter1), "2");
 
 let node2: Node = "node2"
 let counter2: GrowOnlyCounter = incrementGrowOnlyCounter(counter1, node2, 10)
