@@ -35,7 +35,7 @@ class MyError extends Error {
 
 function assertEqual(actual: any, expected: any) {
     if (actual !== expected) {
-        throw new Error(actual + " !== " + expected);
+        throw new MyError(actual + " !== " + expected);
     }
 }
 
