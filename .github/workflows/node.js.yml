@@ -20,7 +20,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - run: echo "::add-matcher::.github/node.json"
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:
@@ -28,3 +27,9 @@ jobs:
     - run: npm ci
     - run: npm run build --if-present
     - run: npm test
+    - name: Annotate Action
+      uses: yuzutech/annotations-action@v0.2.0
+      with:
+        repo-token: "${{ secrets.GITHUB_TOKEN }}"
+        title: 'asserts'
+        input: './annotations.json'
