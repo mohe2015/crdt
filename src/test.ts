@@ -24,13 +24,18 @@
 
 import type { GrowOnlyCounter, GrowOnlySet,  Node } from "./index.js"
 import { addToGrowOnlySet, incrementGrowOnlyCounter, LastWriterWins, mergeGrowOnlySet, mergeLastWriterWins, mergeReplicatedCounter, updateLastWriterWins, valueOfReplicatedCounter } from "./index.js"
-import { ok, strictEqual, AssertionError } from 'assert';
 import fs from 'fs/promises';
+
+function assertEqual(actual: any, expected: any) {
+    if (actual !== expected) {
+        throw new Error(actual + " !== " + expected);
+    }
+}
 
 try {
     let node1: Node = "node1"
     let counter1: GrowOnlyCounter = { [node1]: 2 }
-    strictEqual(valueOfReplicatedCounter(counter1), "2");
+    assertEqual(valueOfReplicatedCounter(counter1), "2");
 
     let node2: Node = "node2"
     let counter2: GrowOnlyCounter = incrementGrowOnlyCounter(counter1, node2, 10)
@@ -79,7 +84,7 @@ try {
     let gosx = mergeGrowOnlySet(gos1, gos2)
     console.log(gosx)
 } catch (e) {
-    console.log("stack", e);
+    console.log("e", e);
     fs.appendFile("./annotations.json", JSON.stringify([
         {
             file: "test",
