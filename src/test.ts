@@ -81,8 +81,7 @@ try {
 } catch (e) {
     if (e instanceof AssertionError) {
         // @ts-expect-error
-        console.log(e.stack);
-        console.log(e);
+        console.log("stack", e.stack);
         fs.appendFile("./annotations.json", JSON.stringify([
             {
                 file: "test",
