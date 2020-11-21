@@ -4,25 +4,14 @@
             "owner": "node",
             "pattern": [
                 {
-                    "regexp": "^(.+):(\\d+)\\s(.+)\\s\\^\\s\\sAssertionError \\[ERR_ASSERTION\\]: (.+\\s\\s.+)$",
-                    "file": 1,
-                    "line": 2,
-                    "code": 3,
-                    "message": 4
-                }
-            ]
-        },
-        {
-            "owner": "node1",
-            "pattern": [
-                {
                     "regexp": "^(.+):(\\d+)$",
                     "file": 1,
                     "line": 2
                 },
                 {
                     "regexp": "^AssertionError \\[ERR_ASSERTION\\]: (.+)$",
-                    "message": 1
+                    "message": 1,
+                    "loop": true
                 }
             ]
         }
