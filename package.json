@@ -1,8 +1,10 @@
 {
   "scripts": {
     "start": "snowpack dev",
-    "build": "snowpack build",
-    "test": "echo \"This template does not include a test runner by default.\" && exit 1",
+    "watch": "tsc --watch",
+    "build-browser": "snowpack build",
+    "build": "tsc",
+    "test": "node --enable-source-maps --trace-deprecation --unhandled-rejections=strict build/src/test.js",
     "format": "prettier --write \"src/**/*.{ts,js}\"",
     "lint": "prettier --check \"src/**/*.{ts,js}\""
   },

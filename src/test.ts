@@ -22,7 +22,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
- import type { GrowOnlyCounter, GrowOnlySet,  Node } from "./index"
+import type { GrowOnlyCounter, GrowOnlySet,  Node } from "./index"
 import { addToGrowOnlySet, incrementGrowOnlyCounter, LastWriterWins, mergeGrowOnlySet, mergeLastWriterWins, mergeReplicatedCounter, updateLastWriterWins, valueOfReplicatedCounter } from "./index"
 
 let node1: Node = "node1"
