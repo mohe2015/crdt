@@ -26,6 +26,13 @@ import type { GrowOnlyCounter, GrowOnlySet,  Node } from "./index.js"
 import { addToGrowOnlySet, incrementGrowOnlyCounter, LastWriterWins, mergeGrowOnlySet, mergeLastWriterWins, mergeReplicatedCounter, updateLastWriterWins, valueOfReplicatedCounter } from "./index.js"
 import fs from 'fs/promises';
 
+class MyError extends Error {
+    constructor(...args: any) {
+        super(...args)
+        Error.captureStackTrace(this, MyError)
+    }
+}
+
 function assertEqual(actual: any, expected: any) {
     if (actual !== expected) {
         throw new Error(actual + " !== " + expected);
