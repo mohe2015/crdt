@@ -11,6 +11,15 @@
                     "message": 4
                 }
             ]
+        },
+        {
+            "owner": "node1",
+            "pattern": [
+                {
+                    "regexp": "^(.+):(\\d+)$",
+                    "message": 1
+                }
+            ]
         }
     ]
 }
