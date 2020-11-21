@@ -80,8 +80,7 @@ try {
     console.log(gosx)
 } catch (e) {
     if (e instanceof AssertionError) {
-        // @ts-expect-error
-        console.log("stack", e.stack);
+        console.log("stack", e);
         fs.appendFile("./annotations.json", JSON.stringify([
             {
                 file: "test",
