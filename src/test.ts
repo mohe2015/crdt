@@ -84,7 +84,7 @@ try {
     let gosx = mergeGrowOnlySet(gos1, gos2)
     console.log(gosx)
 } catch (e) {
-    console.log("e", e);
+    console.log(e.stack);
     fs.appendFile("./annotations.json", JSON.stringify([
         {
             file: "test",
