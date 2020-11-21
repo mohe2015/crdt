@@ -1,0 +1,16 @@
+{
+    "problemMatcher": [
+        {
+            "owner": "node",
+            "pattern": [
+                {
+                    "regexp": "^(.+):(\\d+)\\s(.+)\\s\\^\\s\\sAssertionError \\[ERR_ASSERTION\\]: (.+\\s\\s.+)\\s\\s    ",
+                    "file": 1,
+                    "line": 2,
+                    "code": 3,
+                    "message": 4
+                }
+            ]
+        }
+    ]
+}
