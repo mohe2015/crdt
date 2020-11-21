@@ -7,11 +7,6 @@
                     "regexp": "^(.+):(\\d+)$",
                     "file": 1,
                     "line": 2
-                },
-                {
-                    "regexp": "^AssertionError (.+)$",
-                    "message": 1,
-                    "loop": true
                 }
             ]
         }
