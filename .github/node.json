@@ -16,7 +16,10 @@
             "owner": "node1",
             "pattern": [
                 {
-                    "regexp": "^(.+):(\\d+)$",
+                    "regexp": "^(.+):(\\d+)\\s(.+)",
+                    "file": 1,
+                    "line": 2,
+                    "code": 3,
                     "message": 1
                 }
             ]
