@@ -25,6 +25,7 @@
 import type { GrowOnlyCounter, GrowOnlySet,  Node } from "./index.js"
 import { addToGrowOnlySet, incrementGrowOnlyCounter, LastWriterWins, mergeGrowOnlySet, mergeLastWriterWins, mergeReplicatedCounter, updateLastWriterWins, valueOfReplicatedCounter } from "./index.js"
 import fs from 'fs/promises';
+import { findSourceMap, SourceMap } from 'module';
 
 class MyError extends Error {
     constructor(...args: any) {
@@ -35,6 +36,24 @@ class MyError extends Error {
 
 function assertEqual(actual: any, expected: any) {
     if (actual !== expected) {
+        // https://v8.dev/docs/stack-trace-api
+
+        const _prepareStackTrace = Error.prepareStackTrace;
+        Error.prepareStackTrace = (_, stack) => stack;
+        const stack = new Error().stack!.slice(1);
+        Error.prepareStackTrace = _prepareStackTrace;
+        
+
+        // @ts-expect-error
+        console.log(stack[0].getFileName())
+        // @ts-expect-error
+        console.log(stack[0].getLineNumber())
+        // @ts-expect-error
+        console.log(stack[0].getColumnNumber())
+
+        // @ts-expect-error
+        console.log(findSourceMap(stack[0].getFileName()).findEntry(stack[0].getLineNumber(), stack[0].getColumnNumber()))
+
         throw new MyError(actual + " !== " + expected);
     }
 }
@@ -92,6 +111,7 @@ try {
     console.log(gosx)
 } catch (e) {
     console.log(e.stack);
+    // https://docs.github.com/en/free-pro-team@latest/rest/reference/checks#runs
     fs.appendFile("./annotations.json", JSON.stringify([
         {
             file: "test",

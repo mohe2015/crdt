@@ -1,1 +1,26 @@
-{"name":"@dev.mohe/crdt","version":"0.0.1","description":"","module":"./build/index.js","type":"module","scripts":{"start":"snowpack dev","watch":"tsc --watch","build-browser":"snowpack build","build":"tsc","test":"node --enable-source-maps --trace-deprecation --unhandled-rejections=strict build/test.js","format":"prettier --write \"src/**/*.{ts,js}\"","lint":"prettier --check \"src/**/*.{ts,js}\""},"author":"Moritz Hedtke <Moritz.Hedtke@t-online.de>","license":"AGPL-3.0-or-later","dependencies":{},"devDependencies":{"@snowpack/plugin-run-script":"^2.2.1","@types/snowpack-env":"^2.3.3","prettier":"^2.2.1","snowpack":"^3.0.0-rc.2","typescript":"^4.2.0-dev.20201227"}}
+{
+    "name": "@dev.mohe/crdt",
+    "version": "0.0.1",
+    "description": "",
+    "module": "./build/index.js",
+    "type": "module",
+    "scripts": {
+        "start": "snowpack dev",
+        "watch": "tsc --watch",
+        "build-browser": "snowpack build",
+        "build": "tsc",
+        "test": "node --enable-source-maps --trace-deprecation --unhandled-rejections=strict build/test.js",
+        "format": "prettier --write \"src/**/*.{ts,js}\"",
+        "lint": "prettier --check \"src/**/*.{ts,js}\""
+    },
+    "author": "Moritz Hedtke <Moritz.Hedtke@t-online.de>",
+    "license": "AGPL-3.0-or-later",
+    "dependencies": {},
+    "devDependencies": {
+        "@snowpack/plugin-run-script": "^2.2.1",
+        "@types/snowpack-env": "^2.3.3",
+        "prettier": "^2.2.1",
+        "snowpack": "^3.0.0-rc.2",
+        "typescript": "^4.2.0-dev.20201227"
+    }
+}
