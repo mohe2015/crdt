@@ -12,10 +12,8 @@
       devShell."x86_64-linux" = pkgs.mkShell {
         buildInputs = [
           pkgs.reuse
-          pkgs.nodejs-14_x
+          pkgs.nodejs-15_x
           pkgs.nodePackages.npm-check-updates
-          pkgs.nodePackages.node2nix
-          pkgs.yarn
         ];
       };
     };
