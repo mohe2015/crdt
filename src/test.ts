@@ -59,6 +59,7 @@ async function assertEqual(actual: any, expected: any) {
                 start_line: sourceInfo.originalLine,
                 end_line: sourceInfo.originalLine,
                 start_column: sourceInfo.originalColumn,
+                end_column: sourceInfo.originalColumn,
                 title: "Assertion failed",
                 message: actual + " !== " + expected,
                 annotation_level: "failure"
