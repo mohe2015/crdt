@@ -111,7 +111,7 @@ async function assertEqual(actual: any, expected: any) {
                 title: actual + " === " + expected,
             }
         , null, "\t")
-        await fs.appendFile("./annotations.json", value + "\n")
+        await fs.appendFile("./annotations.json", value + ",\n")
     }
 }
 
