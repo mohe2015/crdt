@@ -105,8 +105,8 @@ async function assertEqual(actual: any, expected: any) {
         let value = JSON.stringify(
             {
                 path: getRelativeFileName(stackInfo.originalSource),
-                start_line: stackInfo.originalLine,
-                end_line: stackInfo.originalLine,
+                start_line: stackInfo.originalLine - 1,
+                end_line: stackInfo.originalLine - 1,
                 start_column: stackInfo.originalColumn,
                 end_column: stackInfo.originalColumn,
                 annotation_level: "notice",
@@ -160,7 +160,7 @@ try {
     console.log("lww21x", lww21x)
 
 
-    await assertEqual(1, 2)
+    await assertEqual(1, 3)
 
     let gos: GrowOnlySet = [0, {}]
 
