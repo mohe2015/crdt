@@ -63,6 +63,8 @@ function getRelativeFileName(absoluteFileName: string): string {
     }
 }
 
+let jsonDelimiter = ""
+
 async function assertEqual(actual: any, expected: any) {
     if (actual !== expected) {
         // https://v8.dev/docs/stack-trace-api
@@ -86,7 +88,8 @@ async function assertEqual(actual: any, expected: any) {
             }
         , null, "\t")
         console.log(value)
-        await fs.appendFile("./annotations.json", value + "\n")
+        await fs.appendFile("./annotations.json", jsonDelimiter + value + "\n")
+        jsonDelimiter = ","
 
         // https://docs.github.com/en/free-pro-team@latest/rest/reference/checks#annotations-items
         throw new MyError(actual + " !== " + expected);
@@ -111,7 +114,8 @@ async function assertEqual(actual: any, expected: any) {
                 title: actual + " === " + expected,
             }
         , null, "\t")
-        await fs.appendFile("./annotations.json", value + ",\n")
+        await fs.appendFile("./annotations.json", jsonDelimiter + value + "\n")
+        jsonDelimiter = ","
     }
 }
 
