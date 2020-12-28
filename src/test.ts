@@ -21,16 +21,45 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-
 import type { GrowOnlyCounter, GrowOnlySet,  Node } from "./index.js"
 import { addToGrowOnlySet, incrementGrowOnlyCounter, LastWriterWins, mergeGrowOnlySet, mergeLastWriterWins, mergeReplicatedCounter, updateLastWriterWins, valueOfReplicatedCounter } from "./index.js"
 import fs from 'fs/promises';
-import { findSourceMap, SourceMap } from 'module';
+import { findSourceMap } from 'module';
+import type { SourceMapping } from 'module'
 
 class MyError extends Error {
     constructor(...args: any) {
         super(...args)
         Error.captureStackTrace(this, MyError)
+    }
+}
+
+function getStackInfo(stackElement: any): SourceMapping {
+    let sourceMap = findSourceMap(stackElement.getFileName())
+
+    if (sourceMap) {
+        return sourceMap.findEntry(stackElement.getLineNumber(), stackElement.getColumnNumber())
+    } else {
+        return {
+            generatedColumn: stackElement.getColumnNumber(),
+            generatedLine: stackElement.getLineNumber(),
+            originalColumn: stackElement.getColumnNumber(),
+            originalLine: stackElement.getLineNumber(),
+            originalSource: stackElement.getFileName()
+        }
+    }
+}
+
+function stackInfoToString(stackInfo: SourceMapping): string {
+    return getRelativeFileName(stackInfo.originalSource) + ":" + stackInfo.originalLine + ":" + stackInfo.originalColumn
+}
+
+function getRelativeFileName(absoluteFileName: string): string {
+    let index = absoluteFileName.indexOf("crdt/")
+    if (index !== -1) {
+        return absoluteFileName.substring(index+5)
+    } else {
+        return absoluteFileName
     }
 }
 
@@ -40,35 +69,27 @@ async function assertEqual(actual: any, expected: any) {
 
         const _prepareStackTrace = Error.prepareStackTrace;
         Error.prepareStackTrace = (_, stack) => stack;
-        const stack = new Error().stack!.slice(1);
+        const stack = new Error().stack!.slice(1) as unknown as any[];
         Error.prepareStackTrace = _prepareStackTrace;
-        
-        // @ts-expect-error
-        console.log(stack[0].getFileName())
-        // @ts-expect-error
-        console.log(stack[0].getLineNumber())
-        // @ts-expect-error
-        console.log(stack[0].getColumnNumber())
 
-        // @ts-expect-error
-        let sourceInfo = findSourceMap(stack[0].getFileName()).findEntry(stack[0].getLineNumber(), stack[0].getColumnNumber())
-
+        let stackInfo = getStackInfo(stack[0])
         let value = JSON.stringify([
             {
-                path: sourceInfo.originalSource.substring(sourceInfo.originalSource.indexOf("crdt/")+5),
-                start_line: sourceInfo.originalLine,
-                end_line: sourceInfo.originalLine,
-                start_column: sourceInfo.originalColumn,
-                end_column: sourceInfo.originalColumn,
-                title: "Assertion failed",
+                path: getRelativeFileName(stackInfo.originalSource),
+                start_line: stackInfo.originalLine,
+                end_line: stackInfo.originalLine,
+                start_column: stackInfo.originalColumn,
+                end_column: stackInfo.originalColumn,
+                annotation_level: "failure",
                 message: actual + " !== " + expected,
-                annotation_level: "failure"
+                title: "Assertion failed",
+                raw_details: stack.map(getStackInfo).map(stackInfoToString).join("\n")
             }
         ])
         console.log(value)
         await fs.appendFile("./annotations.json", value)
 
-        // https://docs.github.com/en/free-pro-team@latest/rest/reference/checks#runs
+        // https://docs.github.com/en/free-pro-team@latest/rest/reference/checks#annotations-items
         throw new MyError(actual + " !== " + expected);
     }
 }
