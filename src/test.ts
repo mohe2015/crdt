@@ -116,7 +116,9 @@ async function assertEqual(actual: any, expected: any) {
 }
 
 try {
-    await fs.rm("./annotations.json")
+    await fs.rm("./annotations.json", {
+        force: true
+    })
     await fs.appendFile("./annotations.json", "[\n")
 
     let node1: Node = "node1"
@@ -168,5 +170,6 @@ try {
     console.log(gosx)
 } catch (error) {
     console.log(error)
+} finally {
     await fs.appendFile("./annotations.json", "]\n")
 }
