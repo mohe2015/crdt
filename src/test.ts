@@ -114,8 +114,9 @@ try {
     // https://docs.github.com/en/free-pro-team@latest/rest/reference/checks#runs
     fs.appendFile("./annotations.json", JSON.stringify([
         {
-            file: "test",
-            line: 5,
+            path: "test",
+            start_line: 5,
+            end_line: 5,
             title: e.name,
             message: e.message,
             annotation_level: "failure"
