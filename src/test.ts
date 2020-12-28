@@ -162,6 +162,8 @@ try {
 
     await assertEqual(1, 4)
 
+    await assertEqual(2, 5)
+
     let gos: GrowOnlySet = [0, {}]
 
     let gos1 = addToGrowOnlySet(gos, node1, "node1eeee")
