@@ -81,9 +81,8 @@ async function assertEqual(actual: any, expected: any) {
                 start_column: stackInfo.originalColumn,
                 end_column: stackInfo.originalColumn,
                 annotation_level: "failure",
-                message: actual + " !== " + expected,
-                title: "Assertion failed",
-                raw_details: stack.map(getStackInfo).map(stackInfoToString).join("\n")
+                message: stack.map(getStackInfo).map(stackInfoToString).join("\n"),
+                title: actual + " !== " + expected,
             }
         ])
         console.log(value)
