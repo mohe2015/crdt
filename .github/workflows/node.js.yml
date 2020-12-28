@@ -27,9 +27,9 @@ jobs:
     - run: npm ci
     - run: npm run build --if-present
     - run: npm test
-    - name: Annotate Action
-      uses: yuzutech/annotations-action@v0.2.0
+    - name: Annotate Action with GitHub's official format
+      uses: mohe2015/annotations-action@v0.3.0
       with:
         repo-token: "${{ secrets.GITHUB_TOKEN }}"
-        title: 'asserts'
+        title: 'Tests'
         input: './annotations.json'
