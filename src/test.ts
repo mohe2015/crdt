@@ -160,7 +160,7 @@ try {
     console.log("lww21x", lww21x)
 
 
-
+    await assertEqual(1, 2)
 
     let gos: GrowOnlySet = [0, {}]
 
