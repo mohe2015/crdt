@@ -73,7 +73,7 @@ async function assertEqual(actual: any, expected: any) {
         Error.prepareStackTrace = _prepareStackTrace;
 
         let stackInfo = getStackInfo(stack[0])
-        let value = JSON.stringify([
+        let value = JSON.stringify(
             {
                 path: getRelativeFileName(stackInfo.originalSource),
                 start_line: stackInfo.originalLine,
@@ -84,9 +84,9 @@ async function assertEqual(actual: any, expected: any) {
                 message: stack.map(getStackInfo).map(stackInfoToString).join("\n"),
                 title: actual + " !== " + expected,
             }
-        ])
+        , null, "\t")
         console.log(value)
-        await fs.appendFile("./annotations.json", value)
+        await fs.appendFile("./annotations.json", value + "\n")
 
         // https://docs.github.com/en/free-pro-team@latest/rest/reference/checks#annotations-items
         throw new MyError(actual + " !== " + expected);
@@ -99,7 +99,7 @@ async function assertEqual(actual: any, expected: any) {
         Error.prepareStackTrace = _prepareStackTrace;
 
         let stackInfo = getStackInfo(stack[0])
-        let value = JSON.stringify([
+        let value = JSON.stringify(
             {
                 path: getRelativeFileName(stackInfo.originalSource),
                 start_line: stackInfo.originalLine,
@@ -110,12 +110,15 @@ async function assertEqual(actual: any, expected: any) {
                 message: stack.map(getStackInfo).map(stackInfoToString).join("\n"),
                 title: actual + " === " + expected,
             }
-        ])
-        await fs.appendFile("./annotations.json", value)
+        , null, "\t")
+        await fs.appendFile("./annotations.json", value + "\n")
     }
 }
 
 try {
+    await fs.rm("./annotations.json")
+    await fs.appendFile("./annotations.json", "[\n")
+
     let node1: Node = "node1"
     let counter1: GrowOnlyCounter = { [node1]: 2 }
     await assertEqual(valueOfReplicatedCounter(counter1), 2);
@@ -165,5 +168,5 @@ try {
     console.log(gosx)
 } catch (error) {
     console.log(error)
-    // TODO fixme allow this to fail and still upload the annotations
+    await fs.appendFile("./annotations.json", "]\n")
 }
