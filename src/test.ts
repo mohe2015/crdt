@@ -90,23 +90,42 @@ async function assertEqual(actual: any, expected: any) {
 
         // https://docs.github.com/en/free-pro-team@latest/rest/reference/checks#annotations-items
         throw new MyError(actual + " !== " + expected);
+    } else {
+        // https://v8.dev/docs/stack-trace-api
+
+        const _prepareStackTrace = Error.prepareStackTrace;
+        Error.prepareStackTrace = (_, stack) => stack;
+        const stack = new Error().stack!.slice(1) as unknown as any[];
+        Error.prepareStackTrace = _prepareStackTrace;
+
+        let stackInfo = getStackInfo(stack[0])
+        let value = JSON.stringify([
+            {
+                path: getRelativeFileName(stackInfo.originalSource),
+                start_line: stackInfo.originalLine,
+                end_line: stackInfo.originalLine,
+                start_column: stackInfo.originalColumn,
+                end_column: stackInfo.originalColumn,
+                annotation_level: "notice",
+                message: stack.map(getStackInfo).map(stackInfoToString).join("\n"),
+                title: actual + " === " + expected,
+            }
+        ])
+        await fs.appendFile("./annotations.json", value)
     }
 }
 
 try {
     let node1: Node = "node1"
     let counter1: GrowOnlyCounter = { [node1]: 2 }
-    await assertEqual(valueOfReplicatedCounter(counter1), "2");
+    await assertEqual(valueOfReplicatedCounter(counter1), 2);
 
     let node2: Node = "node2"
     let counter2: GrowOnlyCounter = incrementGrowOnlyCounter(counter1, node2, 10)
-    console.log(counter2)
-    console.log(valueOfReplicatedCounter(counter2))
+    await assertEqual(valueOfReplicatedCounter(counter2), 12)
 
     let counter12 = mergeReplicatedCounter(counter1, counter2)
-    console.log(counter12)
-    console.log(valueOfReplicatedCounter(counter12))
-
+    await assertEqual(valueOfReplicatedCounter(counter12), 12)
 
     let lww1: LastWriterWins = ["Technik", node1, { [node1]: 1 }]
     console.log("lww1", lww1)
@@ -120,7 +139,7 @@ try {
     let lww21 = mergeLastWriterWins(lww2, lww1)
     console.log("lww21", lww21)
 
-    if (lww12 !== lww21) throw new Error("assert")
+    await assertEqual(lww12, lww21)
 
     let lww211 = updateLastWriterWins(lww21, node1, "Technik")
     console.log("lww211", lww211)
