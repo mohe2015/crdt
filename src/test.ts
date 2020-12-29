@@ -64,9 +64,6 @@ console.log("lww212", lww212)
 let lww21x = mergeLastWriterWins(lww211, lww212)
 console.log("lww21x", lww21x)
 
-
-await assertEqual(1, 4)
-
 let gos: GrowOnlySet = [0, {}]
 
 let gos1 = addToGrowOnlySet(gos, node1, "node1eeee")
