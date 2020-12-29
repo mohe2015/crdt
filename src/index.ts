@@ -34,14 +34,14 @@ export type GrowOnlyCounter = { [id: string]: number | undefined }
 
 export function valueOfReplicatedCounter(replicatedCounter: GrowOnlyCounter) {
   let value = 0
-  for (var nodeId in replicatedCounter) {
+  for (const nodeId in replicatedCounter) {
     value += replicatedCounter[nodeId]!
   }
   return value
 }
 
 export function mergeReplicatedCounter(a: GrowOnlyCounter, b: GrowOnlyCounter): GrowOnlyCounter {
-  let object: GrowOnlyCounter = {}
+  const object: GrowOnlyCounter = {}
   for (var nodeId in a) {
     object[nodeId] = a[nodeId]
   }
