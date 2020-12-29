@@ -24,7 +24,7 @@
 import type { GrowOnlyCounter, GrowOnlySet,  Node } from "./index.js"
 import { addToGrowOnlySet, incrementGrowOnlyCounter, LastWriterWins, mergeGrowOnlySet, mergeLastWriterWins, mergeReplicatedCounter, updateLastWriterWins, valueOfReplicatedCounter } from "./index.js"
 
-async function assertEqual(actual: any, expected: any) {
+async function assertEqual<T>(actual: T, expected: T) {
     if (actual !== expected) {
         throw new Error(actual + " !== " + expected);
     }
@@ -41,7 +41,7 @@ await assertEqual(valueOfReplicatedCounter(counter2), 12)
 const counter12 = mergeReplicatedCounter(counter1, counter2)
 await assertEqual(valueOfReplicatedCounter(counter12), 12)
 
-const lww1: LastWriterWins = ["Technik", node1, { [node1]: 1 }]
+const lww1: LastWriterWins<string> = ["Technik", node1, { [node1]: 1 }]
 console.log("lww1", lww1)
 
 const lww2 = updateLastWriterWins(lww1, node2, "Technik-AG")
@@ -64,7 +64,7 @@ console.log("lww212", lww212)
 const lww21x = mergeLastWriterWins(lww211, lww212)
 console.log("lww21x", lww21x)
 
-const gos: GrowOnlySet = [0, {}]
+const gos: GrowOnlySet<string> = [0, {}]
 
 const gos1 = addToGrowOnlySet(gos, node1, "node1eeee")
 console.log(gos1)

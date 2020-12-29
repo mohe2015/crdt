@@ -30,23 +30,19 @@
 
 export type Node = string
 
-export type GrowOnlyCounter = { [id: string]: number | undefined }
+export type GrowOnlyCounter = { [id: string]: number }
 
-export function valueOfReplicatedCounter(replicatedCounter: GrowOnlyCounter) {
-  let value = 0
-  for (const nodeId in replicatedCounter) {
-    value += replicatedCounter[nodeId]!
-  }
-  return value
+export function valueOfReplicatedCounter(replicatedCounter: GrowOnlyCounter): number {
+  return Object.values(replicatedCounter).reduce((prev, curr) => prev + curr)
 }
 
 export function mergeReplicatedCounter(a: GrowOnlyCounter, b: GrowOnlyCounter): GrowOnlyCounter {
   const object: GrowOnlyCounter = {}
-  for (var nodeId in a) {
+  for (const nodeId in a) {
     object[nodeId] = a[nodeId]
   }
-  for (var nodeId in b) {
-    if (b[nodeId]! > (object[nodeId] || 0)) {
+  for (const nodeId in b) {
+    if (b[nodeId] > (object[nodeId] || 0)) {
       object[nodeId] = b[nodeId]
     }
   }
@@ -59,11 +55,9 @@ export function incrementGrowOnlyCounter(growOnlyCounter: GrowOnlyCounter, id: s
   })
 }
 
-
-
 export type FalseWins = boolean
 
-export function mergeFalseWins(a: FalseWins, b: FalseWins) {
+export function mergeFalseWins(a: FalseWins, b: FalseWins): boolean {
   return a && b
 }
 
@@ -71,40 +65,39 @@ export function mergeFalseWins(a: FalseWins, b: FalseWins) {
 
 export type TrueWins = boolean
 
-export function mergeTrueWins(a: TrueWins, b: TrueWins) {
+export function mergeTrueWins(a: TrueWins, b: TrueWins): boolean {
   return a || b
 }
 
 
 
 
+export type LastWriterWins<T> = [object: T, id: string, vectors: { [id: string]: number }]
 
-export type LastWriterWins = [object: any, id: string, vectors: { [id: string]: number | undefined }]
-
-export function valueOfLastWriterWins(lastWriterWins: LastWriterWins) {
+export function valueOfLastWriterWins<T>(lastWriterWins: LastWriterWins<T>): T {
   return lastWriterWins[0];
 }
 
-export function mergeLastWriterWins(a: LastWriterWins, b: LastWriterWins): LastWriterWins {
+export function mergeLastWriterWins<T>(a: LastWriterWins<T>, b: LastWriterWins<T>): LastWriterWins<T> {
   let aStrictlyGreaterThanB = false
   let aGreaterThanB = true
   let bStrictlyGreaterThanA = false
   let bGreaterThanA = true
 
-  for (var nodeId in a[2]) {
-    if (a[2][nodeId]! > (b[2][nodeId] || 0)) {
+  for (const nodeId in a[2]) {
+    if (a[2][nodeId] > (b[2][nodeId] || 0)) {
       aStrictlyGreaterThanB = true
     }
-    if (a[2][nodeId]! < (b[2][nodeId] || 0)) {
+    if (a[2][nodeId] < (b[2][nodeId] || 0)) {
       aGreaterThanB = false
     }
   }
 
-  for (var nodeId in b[2]) {
-    if (b[2][nodeId]! > (a[2][nodeId] || 0)) {
+  for (const nodeId in b[2]) {
+    if (b[2][nodeId] > (a[2][nodeId] || 0)) {
       bStrictlyGreaterThanA = true
     }
-    if (b[2][nodeId]! < (a[2][nodeId] || 0)) {
+    if (b[2][nodeId] < (a[2][nodeId] || 0)) {
       bGreaterThanA = false
     }
   }
@@ -122,7 +115,7 @@ export function mergeLastWriterWins(a: LastWriterWins, b: LastWriterWins): LastW
   }
 }
 
-export function updateLastWriterWins(lastWriterWins: LastWriterWins, id: string, value: any): LastWriterWins {
+export function updateLastWriterWins<T>(lastWriterWins: LastWriterWins<T>, id: string, value: T): LastWriterWins<T> {
   return [value, id, Object.assign({}, lastWriterWins[2], {
     [id]: (lastWriterWins[2][id] || 0) + 1
   })]
@@ -131,9 +124,9 @@ export function updateLastWriterWins(lastWriterWins: LastWriterWins, id: string,
 
 
 
-export type GrowOnlySet = [lastId: number, value: { [id: string]: any }]
+export type GrowOnlySet<T> = [lastId: number, value: { [id: string]: T }]
 
-export function addToGrowOnlySet(growOnlySet: GrowOnlySet, id: string, add: any): GrowOnlySet {
+export function addToGrowOnlySet<T>(growOnlySet: GrowOnlySet<T>, id: string, add: T): GrowOnlySet<T> {
   if ((id+(growOnlySet[0] + 1)) in growOnlySet) {
     throw new Error("internal consistency problem")
   }
@@ -143,7 +136,7 @@ export function addToGrowOnlySet(growOnlySet: GrowOnlySet, id: string, add: any)
 }
 
 // TODO FIXME first one has to be self
-export function mergeGrowOnlySet(self: GrowOnlySet, update: GrowOnlySet): GrowOnlySet {
+export function mergeGrowOnlySet<T>(self: GrowOnlySet<T>, update: GrowOnlySet<T>): GrowOnlySet<T> {
   return [self[0], Object.assign({}, self[1], update[1])]
 }
 
