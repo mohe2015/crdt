@@ -21,6 +21,10 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
+import equal from 'fast-deep-equal/es6';
+import stringify from 'fast-json-stable-stringify';
+/// <reference path="nodejs.d.ts" />
+import { webcrypto as crypto } from 'crypto';
 
 // use a public key so the change is also signed (allows decentralized replication in the future)
 // sign it by the server
@@ -76,6 +80,50 @@ export function addToPositiveNegativeCounter(positiveNegativeCounter: PositiveNe
 export function subtractFromPositiveNegativeCounter(positiveNegativeCounter: PositiveNegativeCounter, id: string, subtract: number): PositiveNegativeCounter {
   return [positiveNegativeCounter[0], incrementGrowOnlyCounter(positiveNegativeCounter[1], id, subtract)]
 }
+
+
+// 
+export type GrowOnlySet<T> = Readonly<{ [hash: string]: T }>
+
+export async function addToGrowOnlySet<T>(growOnlySet: GrowOnlySet<T>, object: T): Promise<GrowOnlySet<T>> {
+  const stringified = stringify(object);
+  const enc = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest("SHA-512", enc.encode(stringified))
+  const hashArray = Array.from(new Uint8Array(hashBuffer));                     // convert buffer to byte array
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
+  
+  return Object.assign({}, growOnlySet, {
+    [hashHex]: object
+  })
+}
+
+console.log(equal({x:1,y:2}, {y:2,x:1}))
+console.log(stringify({x:1,y:2}))
+console.log(stringify({y:2,x:1}))
+
+
+/*
+// FIXME this is more like a dictionary. also merging same keys with different values is not working properly
+export type PerUserGrowOnlySet<T> = Readonly<[lastId: number, value: { [id: string]: T }]>//
+
+export function addToGrowOnlySet<T>(growOnlySet: PerUserGrowOnlySet<T>, id: string, add: T): PerUserGrowOnlySet<T> {
+  // key of every value is your id concatenated with an incrementing number
+  // if this already exists something is wrong
+  if ((id+(growOnlySet[0] + 1)) in growOnlySet) {
+    throw new Error("internal consistency problem")
+  }
+  return [growOnlySet[0] + 1, Object.assign({}, growOnlySet[1], {
+    [id+(growOnlySet[0] + 1)]: add
+  })]
+}
+
+// TODO FIXME first one has to be self
+export function mergeGrowOnlySet<T>(self: PerUserGrowOnlySet<T>, update: PerUserGrowOnlySet<T>): PerUserGrowOnlySet<T> {
+  return [self[0], Object.assign({}, self[1], update[1])]
+}
+*/
+
+
 
 
 export type FalseWins = Readonly<boolean>
@@ -144,26 +192,6 @@ export function updateLastWriterWins<T>(lastWriterWins: LastWriterWins<T>, id: s
   })]
 }
 
-
-
-
-export type GrowOnlySet<T> = Readonly<[lastId: number, value: { [id: string]: T }]>//
-
-export function addToGrowOnlySet<T>(growOnlySet: GrowOnlySet<T>, id: string, add: T): GrowOnlySet<T> {
-  // key of every value is your id concatenated with an incrementing number
-  // if this already exists something is wrong
-  if ((id+(growOnlySet[0] + 1)) in growOnlySet) {
-    throw new Error("internal consistency problem")
-  }
-  return [growOnlySet[0] + 1, Object.assign({}, growOnlySet[1], {
-    [id+(growOnlySet[0] + 1)]: add
-  })]
-}
-
-// TODO FIXME first one has to be self
-export function mergeGrowOnlySet<T>(self: GrowOnlySet<T>, update: GrowOnlySet<T>): GrowOnlySet<T> {
-  return [self[0], Object.assign({}, self[1], update[1])]
-}
 
 
 
