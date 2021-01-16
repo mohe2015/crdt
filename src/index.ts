@@ -28,16 +28,19 @@
 // https://github.com/yjs/yjs
 // https://www.youtube.com/watch?v=0l5XgnQ6rB4&feature=youtu.be
 
-export type Node = string
+export type Node = Readonly<string>
 
-export type GrowOnlyCounter = { [id: string]: number }
+// https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type#Known_CRDTs
 
-export function valueOfReplicatedCounter(replicatedCounter: GrowOnlyCounter): number {
+export type ModifiableGrowOnlyCounter = { [id: string]: number }
+export type GrowOnlyCounter = Readonly<ModifiableGrowOnlyCounter>
+
+export function valueOfGrowOnlyCounter(replicatedCounter: GrowOnlyCounter): number {
   return Object.values(replicatedCounter).reduce((prev, curr) => prev + curr)
 }
 
-export function mergeReplicatedCounter(a: GrowOnlyCounter, b: GrowOnlyCounter): GrowOnlyCounter {
-  const object: GrowOnlyCounter = {}
+export function mergeGrowOnlyCounter(a: GrowOnlyCounter, b: GrowOnlyCounter): GrowOnlyCounter {
+  const object: ModifiableGrowOnlyCounter = {}
   for (const nodeId in a) {
     object[nodeId] = a[nodeId]
   }
@@ -55,7 +58,27 @@ export function incrementGrowOnlyCounter(growOnlyCounter: GrowOnlyCounter, id: s
   })
 }
 
-export type FalseWins = boolean
+
+export type PositiveNegativeCounter = Readonly<[positive: GrowOnlyCounter, negative: GrowOnlyCounter]>
+
+export function valueOfPositiveNegativeCounter(positiveNegativeCounter: PositiveNegativeCounter): number {
+  return valueOfGrowOnlyCounter(positiveNegativeCounter[0]) - valueOfGrowOnlyCounter(positiveNegativeCounter[1])
+}
+
+export function mergePositiveNegativeCounter(a: PositiveNegativeCounter, b: PositiveNegativeCounter): PositiveNegativeCounter {
+  return [mergeGrowOnlyCounter(a[0], b[0]), mergeGrowOnlyCounter(a[1], b[1])]
+}
+
+export function addToPositiveNegativeCounter(positiveNegativeCounter: PositiveNegativeCounter, id: string, increment: number): PositiveNegativeCounter {
+  return [incrementGrowOnlyCounter(positiveNegativeCounter[0], id, increment), positiveNegativeCounter[1]]
+}
+
+export function subtractFromPositiveNegativeCounter(positiveNegativeCounter: PositiveNegativeCounter, id: string, subtract: number): PositiveNegativeCounter {
+  return [positiveNegativeCounter[0], incrementGrowOnlyCounter(positiveNegativeCounter[1], id, subtract)]
+}
+
+
+export type FalseWins = Readonly<boolean>
 
 export function mergeFalseWins(a: FalseWins, b: FalseWins): boolean {
   return a && b
@@ -63,7 +86,7 @@ export function mergeFalseWins(a: FalseWins, b: FalseWins): boolean {
 
 
 
-export type TrueWins = boolean
+export type TrueWins = Readonly<boolean>
 
 export function mergeTrueWins(a: TrueWins, b: TrueWins): boolean {
   return a || b
@@ -72,7 +95,7 @@ export function mergeTrueWins(a: TrueWins, b: TrueWins): boolean {
 
 
 
-export type LastWriterWins<T> = [object: T, id: string, vectors: { [id: string]: number }]
+export type LastWriterWins<T> = Readonly<[object: T, id: string, vectors: { [id: string]: number }]>
 
 export function valueOfLastWriterWins<T>(lastWriterWins: LastWriterWins<T>): T {
   return lastWriterWins[0];
@@ -124,9 +147,11 @@ export function updateLastWriterWins<T>(lastWriterWins: LastWriterWins<T>, id: s
 
 
 
-export type GrowOnlySet<T> = [lastId: number, value: { [id: string]: T }]
+export type GrowOnlySet<T> = Readonly<[lastId: number, value: { [id: string]: T }]>//
 
 export function addToGrowOnlySet<T>(growOnlySet: GrowOnlySet<T>, id: string, add: T): GrowOnlySet<T> {
+  // key of every value is your id concatenated with an incrementing number
+  // if this already exists something is wrong
   if ((id+(growOnlySet[0] + 1)) in growOnlySet) {
     throw new Error("internal consistency problem")
   }
@@ -140,6 +165,9 @@ export function mergeGrowOnlySet<T>(self: GrowOnlySet<T>, update: GrowOnlySet<T>
   return [self[0], Object.assign({}, self[1], update[1])]
 }
 
+
+
+//export type MultiWriterValue<T>
 
 
 
