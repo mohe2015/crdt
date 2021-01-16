@@ -21,8 +21,9 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import equal from 'fast-deep-equal/es6';
+//import equal from 'fast-deep-equal/es6';
 import stringify from 'fast-json-stable-stringify';
+
 /// <reference path="nodejs.d.ts" />
 import { webcrypto as crypto } from 'crypto';
 
@@ -36,7 +37,7 @@ export async function hashObject<T>(object: T): Promise<string> {
 }
 
 function intersect(a: string[], b: string[]) {
-  var setB = new Set(b);
+  const setB = new Set(b);
   return [...new Set(a)].filter(x => setB.has(x));
 }
 
@@ -125,11 +126,9 @@ export async function compareGrowOnlySet<T>(a: GrowOnlySet<T>, b: GrowOnlySet<T>
   if (aKeys.length == bKeys.length && intersection.length == aKeys.length) return 0;
   if (aKeys.length == intersection.length) return -1;
   if (bKeys.length == intersection.length) return 1;
+  throw new Error("hopefully unreachable")
 }
 
-console.log(equal({x:1,y:2}, {y:2,x:1}))
-console.log(stringify({x:1,y:2}))
-console.log(stringify({y:2,x:1}))
 
 
 /*

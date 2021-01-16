@@ -21,8 +21,9 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import type { GrowOnlyCounter, GrowOnlySet,  Node } from "./index.js"
-import { addToGrowOnlySet, incrementGrowOnlyCounter, LastWriterWins, mergeGrowOnlySet, mergeLastWriterWins, mergeReplicatedCounter, updateLastWriterWins, valueOfReplicatedCounter } from "./index.js"
+import { GrowOnlyCounter,  mergeGrowOnlyCounter,  Node, valueOfGrowOnlyCounter } from "./index.js"
+import { incrementGrowOnlyCounter, LastWriterWins, mergeLastWriterWins, updateLastWriterWins } from "./index.js"
+import stringify from 'fast-json-stable-stringify';
 
 async function assertEqual<T>(actual: T, expected: T) {
     if (actual !== expected) {
@@ -32,14 +33,14 @@ async function assertEqual<T>(actual: T, expected: T) {
 
 const node1: Node = "node1"
 const counter1: GrowOnlyCounter = { [node1]: 2 }
-await assertEqual(valueOfReplicatedCounter(counter1), 2);
+await assertEqual(valueOfGrowOnlyCounter(counter1), 2);
 
 const node2: Node = "node2"
 const counter2: GrowOnlyCounter = incrementGrowOnlyCounter(counter1, node2, 10)
-await assertEqual(valueOfReplicatedCounter(counter2), 12)
+await assertEqual(valueOfGrowOnlyCounter(counter2), 12)
 
-const counter12 = mergeReplicatedCounter(counter1, counter2)
-await assertEqual(valueOfReplicatedCounter(counter12), 12)
+const counter12 = mergeGrowOnlyCounter(counter1, counter2)
+await assertEqual(valueOfGrowOnlyCounter(counter12), 12)
 
 const lww1: LastWriterWins<string> = ["Technik", node1, { [node1]: 1 }]
 console.log("lww1", lww1)
@@ -63,7 +64,7 @@ console.log("lww212", lww212)
 
 const lww21x = mergeLastWriterWins(lww211, lww212)
 console.log("lww21x", lww21x)
-
+/*
 const gos: GrowOnlySet<string> = [0, {}]
 
 const gos1 = addToGrowOnlySet(gos, node1, "node1eeee")
@@ -74,3 +75,8 @@ console.log(gos2)
 
 const gosx = mergeGrowOnlySet(gos1, gos2)
 console.log(gosx)
+*/
+
+
+await assertEqual(stringify({x:1,y:2}), `{"x":1,"y":2}`)
+await assertEqual(stringify({y:2,x:1}), `{"x":1,"y":2}`)
