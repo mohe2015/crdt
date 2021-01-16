@@ -41,6 +41,16 @@ function intersect(a: string[], b: string[]) {
   return [...new Set(a)].filter(x => setB.has(x));
 }
 
+
+
+
+// TODO FIXME most of these should store a change history to allow tracking that and
+// also to allow reverting
+
+
+
+
+
 // use a public key so the change is also signed (allows decentralized replication in the future)
 // sign it by the server
 
@@ -119,17 +129,52 @@ export async function mergeGrowOnlySet<T>(a: GrowOnlySet<T>, b: GrowOnlySet<T>):
   return Object.assign({}, a, b)
 }
 
-export async function compareGrowOnlySet<T>(a: GrowOnlySet<T>, b: GrowOnlySet<T>): Promise<number> {
+export async function causalityCompareGrowOnlySet<T>(a: GrowOnlySet<T>, b: GrowOnlySet<T>): Promise<number> {
   const aKeys = Object.keys(a);
   const bKeys = Object.keys(b);
   const intersection = intersect(aKeys, bKeys)
   if (aKeys.length == bKeys.length && intersection.length == aKeys.length) return 0;
   if (aKeys.length == intersection.length) return -1;
   if (bKeys.length == intersection.length) return 1;
-  throw new Error("hopefully unreachable")
+  throw new Error("hopefully unreachable") // TODO FIXME this should mean neither
 }
 
 
+// TODO FIXME remove may be a hash set
+// remove wins
+export type TwoPhaseSet<T> = Readonly<[add: GrowOnlySet<T>, remove: GrowOnlySet<T>]>
+
+export async function valueInTwoPhaseSet<T>(twoPhaseSet: TwoPhaseSet<T>, object: T): Promise<boolean> {
+  return (await valueInGrowOnlySet(twoPhaseSet[0], object)) && !(await valueInGrowOnlySet(twoPhaseSet[1], object))
+}
+
+export async function addToTwoPhaseSet<T>(twoPhaseSet: TwoPhaseSet<T>, object: T): Promise<TwoPhaseSet<T>> {
+  return [await addToGrowOnlySet(twoPhaseSet[0], object), twoPhaseSet[1]]
+}
+
+export async function removeFromTwoPhaseSet<T>(twoPhaseSet: TwoPhaseSet<T>, object: T): Promise<TwoPhaseSet<T>> {
+  // TODO FIXME maybe check if its in the add
+  return [twoPhaseSet[0], await addToGrowOnlySet(twoPhaseSet[1], object)]
+}
+
+// comparison in respect to causality not size of set
+export async function causalityCompareTwoPhaseSet<T>(a: TwoPhaseSet<T>, b: TwoPhaseSet<T>): Promise<number> {
+  const add = await causalityCompareGrowOnlySet(a[0], b[0])
+  const remove = await causalityCompareGrowOnlySet(a[1], b[1])
+  if (add == remove) return add
+  if (add == 0) return remove
+  if (remove == 0) return add
+  throw new Error("unkown causality")
+  // -1 -1 = -1
+  // -1  0 = -1
+  // -1  1 = dontknow?/error?
+  //  0 -1 = -1
+  //  0  0 = 0
+  //  0  1 = 1
+  //  1 -1 = dontknow?/error?
+  //  1  0 = 1
+  //  1  1 = 1
+}
 
 /*
 // FIXME this is more like a dictionary. also merging same keys with different values is not working properly
@@ -171,7 +216,7 @@ export function mergeTrueWins(a: TrueWins, b: TrueWins): boolean {
 
 
 
-
+// TODO FIXME probably bad implementation
 export type LastWriterWins<T> = Readonly<[object: T, id: string, vectors: { [id: string]: number }]>
 
 export function valueOfLastWriterWins<T>(lastWriterWins: LastWriterWins<T>): T {
@@ -298,3 +343,38 @@ problem: constraints in a distributed system don't work
 show the errors to users / admin
 store locally in indexeddb
 */
+
+
+// alternative implementation with history (simplest true wins case)
+// store the following:
+// identifier value previous-hashes
+
+// counter
+// identifier add random-hash (to prevent merging of unrelated adds) previous-hashes (to prevent duplicate application)
+//       5
+//  +1       +2
+// +2  +1   +1  +1
+// merge merge merge
+// 13
+
+// grow only / two phase set
+// {}
+// +{"elephant"}  +{"blablub"}
+// -{"blablub"}
+// merge merge merge
+// conflict, resolve by client id or some other ramdon shit / remove wins or whatever although this may easily allow readding
+
+// last writer wins
+// "hello"
+// ="world"
+// ="test"     ="jojo"
+//      conflict, random resolution by id or timestamp or so
+
+// multiple values
+// "hello"
+// ="test" = "jojo"
+//    \      / 
+//     \    /
+//      \  /
+//       \/
+//      ="cat"   // this would be an explicit conflict resolution
