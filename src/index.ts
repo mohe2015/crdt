@@ -26,6 +26,20 @@ import stringify from 'fast-json-stable-stringify';
 /// <reference path="nodejs.d.ts" />
 import { webcrypto as crypto } from 'crypto';
 
+
+export async function hashObject<T>(object: T): Promise<string> {
+  const stringified = stringify(object);
+  const enc = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest("SHA-512", enc.encode(stringified))
+  const hashArray = Array.from(new Uint8Array(hashBuffer));                     // convert buffer to byte array
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
+}
+
+function intersect(a: string[], b: string[]) {
+  var setB = new Set(b);
+  return [...new Set(a)].filter(x => setB.has(x));
+}
+
 // use a public key so the change is also signed (allows decentralized replication in the future)
 // sign it by the server
 
@@ -82,19 +96,35 @@ export function subtractFromPositiveNegativeCounter(positiveNegativeCounter: Pos
 }
 
 
-// 
 export type GrowOnlySet<T> = Readonly<{ [hash: string]: T }>
 
 export async function addToGrowOnlySet<T>(growOnlySet: GrowOnlySet<T>, object: T): Promise<GrowOnlySet<T>> {
-  const stringified = stringify(object);
-  const enc = new TextEncoder();
-  const hashBuffer = await crypto.subtle.digest("SHA-512", enc.encode(stringified))
-  const hashArray = Array.from(new Uint8Array(hashBuffer));                     // convert buffer to byte array
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
-  
+  const hashHex = await hashObject(object)
   return Object.assign({}, growOnlySet, {
     [hashHex]: object
   })
+}
+
+export async function valueOfGrowOnlySet<T>(growOnlySet: GrowOnlySet<T>): Promise<GrowOnlySet<T>> {
+  return growOnlySet
+}
+
+export async function valueInGrowOnlySet<T>(growOnlySet: GrowOnlySet<T>, object: T): Promise<boolean> {
+  const hashHex = await hashObject(object)
+  return hashHex in growOnlySet
+}
+
+export async function mergeGrowOnlySet<T>(a: GrowOnlySet<T>, b: GrowOnlySet<T>): Promise<GrowOnlySet<T>> {
+  return Object.assign({}, a, b)
+}
+
+export async function compareGrowOnlySet<T>(a: GrowOnlySet<T>, b: GrowOnlySet<T>): Promise<number> {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  const intersection = intersect(aKeys, bKeys)
+  if (aKeys.length == bKeys.length && intersection.length == aKeys.length) return 0;
+  if (aKeys.length == intersection.length) return -1;
+  if (bKeys.length == intersection.length) return 1;
 }
 
 console.log(equal({x:1,y:2}, {y:2,x:1}))
