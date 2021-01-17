@@ -22,7 +22,8 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import { hashObject } from './index.js';
-import { exportPublicKey, hashArrayBuffer, sign } from './crypto';
+import { exportPublicKey, generateKey, hashArrayBuffer, sign } from './crypto.js';
+import { webcrypto as crypto } from 'crypto';
 
 // binary based protocol for efficiency
 
@@ -67,13 +68,15 @@ type CmRDTLog<T> = Readonly<CmRDTLogEntry<T>[]>
 async function createLogEntry<T>(signKey: CryptoKeyPair, value: T, previousHashes: ArrayBuffer[]): Promise<CmRDTLogEntry<T>> {
     const objectHash = await hashObject(value)
     const author = await exportPublicKey(signKey)
-    const everything = new Uint8Array(author.byteLength + objectHash.byteLength + previousHashes.reduce<number>((prev, curr) => prev + curr.byteLength, 0))
+    const random = crypto.getRandomValues(new Uint8Array(64)) // 512
+    const everything = new Uint8Array(author.byteLength + objectHash.byteLength + random.byteLength + previousHashes.reduce<number>((prev, curr) => prev + curr.byteLength, 0))
     everything.set(new Uint8Array(author), 0)
     everything.set(new Uint8Array(objectHash), author.byteLength)
+    everything.set(random, author.byteLength + objectHash.byteLength)
     previousHashes.reduce<number>((prev, curr) => {
         everything.set(new Uint8Array(curr), prev)
         return prev + curr.byteLength
-    }, author.byteLength + objectHash.byteLength)
+    }, author.byteLength + objectHash.byteLength + random.byteLength)
     const hash = await hashArrayBuffer(everything)
 
     const entry: CmRDTLogEntry<T> = {
@@ -111,3 +114,10 @@ async function createLogEntry<T>(signKey: CryptoKeyPair, value: T, previousHashe
 // NEW DATABASE DESIGN
 // out of line auto-incrementing integer primary key | value | hash | previous | author | signature
 // always store in topological order
+
+const key = await generateKey()
+
+const entry1 = await createLogEntry(key, 0, [])
+const entry2 = await createLogEntry(key, 2, [entry1.hash])
+
+console.log(entry2)

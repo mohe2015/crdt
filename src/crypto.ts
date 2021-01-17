@@ -22,7 +22,6 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import 'nodejs.d.ts'
 import { webcrypto as crypto } from 'crypto';
 
 export async function generateKey(): Promise<CryptoKeyPair> {
@@ -44,14 +43,14 @@ export async function sign(key: CryptoKeyPair, data: ArrayBuffer): Promise<Array
 }
 
 export async function exportPrivateKey(key: CryptoKeyPair): Promise<ArrayBuffer> {
-    return window.crypto.subtle.exportKey(
+    return crypto.subtle.exportKey(
         "pkcs8",
         key.privateKey
     );
 }
 
 export async function exportPublicKey(key: CryptoKeyPair): Promise<ArrayBuffer> {
-    return window.crypto.subtle.exportKey(
+    return crypto.subtle.exportKey(
         "spki",
         key.publicKey
     );
