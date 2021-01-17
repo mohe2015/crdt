@@ -21,7 +21,11 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-export {}
+
+import 'nodejs.d.ts'
+import { webcrypto as crypto } from 'crypto';
+import { hashObject } from './index.js';
+import { exportPublicKey, sign } from './crypto';
 
 // binary based protocol for efficiency
 
@@ -59,19 +63,30 @@ export {}
 //       \/
 //      ="cat"   // this would be an explicit conflict resolution
 
-type CmRDTLogEntry<T> = Readonly<{value: T, hash: string, previousHashes: string[], author: ArrayBuffer, signature: ArrayBuffer }>;
+type CmRDTLogEntry<T> = Readonly<{value: T, hash: ArrayBuffer, previousHashes: ArrayBuffer[], author: ArrayBuffer, signature: ArrayBuffer }>;
 
 type CmRDTLog<T> = Readonly<CmRDTLogEntry<T>[]>
 
-const firstEntry: CmRDTLogEntry<number> = {value: 1, hash: "a", previousHashes: [], author: new ArrayBuffer(0), signature: new ArrayBuffer(0) }
+async function createLogEntry<T>(signKey: CryptoKeyPair, value: T, previousHashes: ArrayBuffer[]): Promise<CmRDTLogEntry<T>> {
+    const hash = await hashObject(value)
+    const author = await exportPublicKey(signKey)
+    const everything = new Uint8Array(author.byteLength + hash.byteLength + previousHashes.reduce<number>((prev, curr) => prev + curr.byteLength, 0))
+    everything.set(new Uint8Array(author), 0)
+    everything.set(new Uint8Array(hash), author.byteLength)
+    previousHashes.reduce<number>((prev, curr) => {
+        everything.set(new Uint8Array(curr), prev)
+        return prev + curr.byteLength
+    }, author.byteLength + hash.byteLength)
 
-const fork1Entry: CmRDTLogEntry<number> = {value: 2, hash: `b[${firstEntry.hash}]`, previousHashes: [firstEntry.hash], author: new ArrayBuffer(0), signature: new ArrayBuffer(0)}
-
-const fork2Entry: CmRDTLogEntry<number> = {value: 3, hash: `c[${firstEntry.hash}]`, previousHashes: [firstEntry.hash], author: new ArrayBuffer(0), signature: new ArrayBuffer(0)}
-
-const mergeEntry: CmRDTLogEntry<number> = {value: 2.5, hash: `d[${fork1Entry.hash}][${fork2Entry.hash}]`, previousHashes: [fork1Entry.hash, fork2Entry.hash], author: new ArrayBuffer(0), signature: new ArrayBuffer(0)}
-
-console.dir(mergeEntry, { depth: null })
+    const entry: CmRDTLogEntry<T> = {
+        author: author,
+        hash: hash,
+        value: value,
+        previousHashes: previousHashes,
+        signature: await sign(signKey, everything)
+    }
+    return entry
+}
 
 // heads can be found by looking for hashes that are not in any "previous"
 // how to do this efficiently
@@ -96,5 +111,5 @@ console.dir(mergeEntry, { depth: null })
 // index.openCursor(null, 'prev'); 
 
 // NEW DATABASE DESIGN
-// out of line auto-incrementing integer primary key | value | hash | previous
+// out of line auto-incrementing integer primary key | value | hash | previous | author | signature
 // always store in topological order

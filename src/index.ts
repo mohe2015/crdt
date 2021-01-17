@@ -28,12 +28,12 @@ import stringify from 'fast-json-stable-stringify';
 import { webcrypto as crypto } from 'crypto';
 
 
-export async function hashObject<T>(object: T): Promise<string> {
+export async function hashObject<T>(object: T): Promise<ArrayBuffer> {
   const stringified = stringify(object);
   const enc = new TextEncoder();
-  const hashBuffer = await crypto.subtle.digest("SHA-512", enc.encode(stringified))
-  const hashArray = Array.from(new Uint8Array(hashBuffer));                     // convert buffer to byte array
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
+  return await crypto.subtle.digest("SHA-512", enc.encode(stringified))
+  //const hashArray = Array.from(new Uint8Array(hashBuffer));                     // convert buffer to byte array
+  //return hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
 }
 
 function intersect(a: string[], b: string[]) {

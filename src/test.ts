@@ -21,9 +21,11 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
+import './cmrdt.js'
+
+ /*
 import { GrowOnlyCounter,  mergeGrowOnlyCounter,  Node, valueOfGrowOnlyCounter } from "./index.js"
 import { incrementGrowOnlyCounter, LastWriterWins, mergeLastWriterWins, updateLastWriterWins } from "./index.js"
-import './cmrdt.js'
 import stringify from 'fast-json-stable-stringify';
 
 async function assertEqual<T>(actual: T, expected: T) {
@@ -64,7 +66,7 @@ const lww212 = updateLastWriterWins(lww21, node2, "Technik AG")
 console.log("lww212", lww212)
 
 const lww21x = mergeLastWriterWins(lww211, lww212)
-console.log("lww21x", lww21x)
+console.log("lww21x", lww21x)*/
 /*
 const gos: GrowOnlySet<string> = [0, {}]
 
