@@ -106,7 +106,7 @@ export function subtractFromPositiveNegativeCounter(positiveNegativeCounter: Pos
   return [positiveNegativeCounter[0], incrementGrowOnlyCounter(positiveNegativeCounter[1], id, subtract)]
 }
 
-
+/*
 export type GrowOnlySet<T> = Readonly<{ [hash: string]: T }>
 
 export async function addToGrowOnlySet<T>(growOnlySet: GrowOnlySet<T>, object: T): Promise<GrowOnlySet<T>> {
@@ -138,7 +138,6 @@ export async function causalityCompareGrowOnlySet<T>(a: GrowOnlySet<T>, b: GrowO
   if (bKeys.length == intersection.length) return 1;
   throw new Error("hopefully unreachable") // TODO FIXME this should mean neither
 }
-
 
 // TODO FIXME remove may be a hash set
 // remove wins
@@ -175,6 +174,7 @@ export async function causalityCompareTwoPhaseSet<T>(a: TwoPhaseSet<T>, b: TwoPh
   //  1  0 = 1
   //  1  1 = 1
 }
+*/
 
 /*
 // FIXME this is more like a dictionary. also merging same keys with different values is not working properly

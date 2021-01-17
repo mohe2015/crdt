@@ -78,8 +78,9 @@ console.log(gos2)
 
 const gosx = mergeGrowOnlySet(gos1, gos2)
 console.log(gosx)
-*/
+
 
 
 await assertEqual(stringify({x:1,y:2}), `{"x":1,"y":2}`)
 await assertEqual(stringify({y:2,x:1}), `{"x":1,"y":2}`)
+*/

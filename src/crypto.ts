@@ -22,6 +22,9 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
+import 'nodejs.d.ts'
+import { webcrypto as crypto } from 'crypto';
+
 export async function generateKey(): Promise<CryptoKeyPair> {
     return await crypto.subtle.generateKey({
         name: "RSA-PSS",
@@ -52,4 +55,8 @@ export async function exportPublicKey(key: CryptoKeyPair): Promise<ArrayBuffer> 
         "spki",
         key.publicKey
     );
+}
+
+export async function hashArrayBuffer(buffer: ArrayBuffer): Promise<ArrayBuffer> {
+    return await crypto.subtle.digest("SHA-512", buffer)
 }

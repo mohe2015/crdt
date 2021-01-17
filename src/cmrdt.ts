@@ -21,11 +21,8 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-
-import 'nodejs.d.ts'
-import { webcrypto as crypto } from 'crypto';
 import { hashObject } from './index.js';
-import { exportPublicKey, sign } from './crypto';
+import { exportPublicKey, hashArrayBuffer, sign } from './crypto';
 
 // binary based protocol for efficiency
 
@@ -68,15 +65,16 @@ type CmRDTLogEntry<T> = Readonly<{value: T, hash: ArrayBuffer, previousHashes: A
 type CmRDTLog<T> = Readonly<CmRDTLogEntry<T>[]>
 
 async function createLogEntry<T>(signKey: CryptoKeyPair, value: T, previousHashes: ArrayBuffer[]): Promise<CmRDTLogEntry<T>> {
-    const hash = await hashObject(value)
+    const objectHash = await hashObject(value)
     const author = await exportPublicKey(signKey)
-    const everything = new Uint8Array(author.byteLength + hash.byteLength + previousHashes.reduce<number>((prev, curr) => prev + curr.byteLength, 0))
+    const everything = new Uint8Array(author.byteLength + objectHash.byteLength + previousHashes.reduce<number>((prev, curr) => prev + curr.byteLength, 0))
     everything.set(new Uint8Array(author), 0)
-    everything.set(new Uint8Array(hash), author.byteLength)
+    everything.set(new Uint8Array(objectHash), author.byteLength)
     previousHashes.reduce<number>((prev, curr) => {
         everything.set(new Uint8Array(curr), prev)
         return prev + curr.byteLength
-    }, author.byteLength + hash.byteLength)
+    }, author.byteLength + objectHash.byteLength)
+    const hash = await hashArrayBuffer(everything)
 
     const entry: CmRDTLogEntry<T> = {
         author: author,
