@@ -61,10 +61,11 @@ import { webcrypto as crypto } from 'crypto';
 //       \/
 //      ="cat"   // this would be an explicit conflict resolution
 
-type CmRDTLogEntry<T> = Readonly<{value: T, hash: ArrayBuffer, previousHashes: ArrayBuffer[], author: ArrayBuffer, signature: ArrayBuffer }>;
+type CmRDTLogEntry<T> = Readonly<{value: T, hash: ArrayBuffer, random: ArrayBuffer, previousHashes: ArrayBuffer[], author: ArrayBuffer, signature: ArrayBuffer }>;
 
 type CmRDTLog<T> = Readonly<CmRDTLogEntry<T>[]>
 
+// https://github.com/orbitdb/ipfs-log/blob/master/API.md#new-log-ipfs-id contains an interesting example 
 async function createLogEntry<T>(signKey: CryptoKeyPair, value: T, previousHashes: ArrayBuffer[]): Promise<CmRDTLogEntry<T>> {
     const objectHash = await hashObject(value)
     const author = await exportPublicKey(signKey)
@@ -80,14 +81,36 @@ async function createLogEntry<T>(signKey: CryptoKeyPair, value: T, previousHashe
     const hash = await hashArrayBuffer(everything)
 
     const entry: CmRDTLogEntry<T> = {
-        author: author,
-        hash: hash,
+        author: author, // TODO use the user database, then we can use a hash of it's public key / the entry in that database. This may also be pretty bad as then everybody knows of all users.
+        hash: hash, // we don't need to transmit this as it can be calculated from the remaining data
+        random: random, // to allow verification? otherweise you could override by pretending your hash is correct
         value: value,
         previousHashes: previousHashes,
         signature: await sign(signKey, everything)
     }
     return entry
 }
+
+// allow changing your keys
+// this is basically impossible decentralized as two changes would conflict and you wouldn't know how to handle that. probably only revocation should be implemented so afterwards no messages from that user are valid.
+
+// TODO FIXME store name, role and signed identity somewhere to allow verification
+// this could be send on connect, but for updates you would also need to send this if the user is not known to the other person
+// maybe another table which contains that data as key value or so
+
+// maybe a database which contains all trusted "servers" which is also updated like this
+
+// user database:
+
+// initial element is added client-side
+
+// entry: author: server-key, value: add-op server-key type:server, signature: self-signed by server
+
+// then all currently trusted SERVER keys can use add-op and remove-op to add and remove keys
+// roles: type:server, type:admin, type:manager, type:user
+
+// also contains password, etc. but this is only send between servers and admins
+
 
 // heads can be found by looking for hashes that are not in any "previous"
 // how to do this efficiently
@@ -118,6 +141,9 @@ async function createLogEntry<T>(signKey: CryptoKeyPair, value: T, previousHashe
 const key = await generateKey()
 
 const entry1 = await createLogEntry(key, 0, [])
+const entry1b = await createLogEntry(key, 0, [])
 const entry2 = await createLogEntry(key, 2, [entry1.hash])
 
-console.log(entry2)
+console.dir(entry1, { depth: null });
+console.dir(entry1b, { depth: null });
+console.dir(entry2, { depth: null });
