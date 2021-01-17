@@ -23,6 +23,7 @@
  */
 import { GrowOnlyCounter,  mergeGrowOnlyCounter,  Node, valueOfGrowOnlyCounter } from "./index.js"
 import { incrementGrowOnlyCounter, LastWriterWins, mergeLastWriterWins, updateLastWriterWins } from "./index.js"
+import './cmrdt.js'
 import stringify from 'fast-json-stable-stringify';
 
 async function assertEqual<T>(actual: T, expected: T) {
