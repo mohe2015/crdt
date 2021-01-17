@@ -16,14 +16,14 @@
     "author": "Moritz Hedtke <Moritz.Hedtke@t-online.de>",
     "license": "AGPL-3.0-or-later",
     "devDependencies": {
-        "@snowpack/plugin-run-script": "^2.2.1",
+        "@snowpack/plugin-run-script": "^2.3.0",
         "@types/snowpack-env": "^2.3.3",
-        "@typescript-eslint/eslint-plugin": "^4.11.1",
-        "@typescript-eslint/parser": "^4.11.1",
-        "eslint": "^7.16.0",
+        "@typescript-eslint/eslint-plugin": "^4.13.0",
+        "@typescript-eslint/parser": "^4.13.0",
+        "eslint": "^7.18.0",
         "prettier": "^2.2.1",
-        "snowpack": "^3.0.0-rc.2",
-        "typescript": "^4.2.0-dev.20201227"
+        "snowpack": "^3.0.11",
+        "typescript": "^4.2.0-dev.20210115"
     },
     "dependencies": {
         "fast-deep-equal": "^3.1.3",
