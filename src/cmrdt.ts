@@ -97,6 +97,7 @@ async function createLogEntry<T>(signKey: CryptoKeyPair, value: T, previousHashe
 // TODO FIXME store name, role and signed identity somewhere to allow verification
 // this could be send on connect, but for updates you would also need to send this if the user is not known to the other person
 // maybe another table which contains that data as key value or so
+// key value could have the advantage that a client can only request keys it knows about.
 
 // maybe a database which contains all trusted "servers" which is also updated like this
 
@@ -138,12 +139,45 @@ async function createLogEntry<T>(signKey: CryptoKeyPair, value: T, previousHashe
 // out of line auto-incrementing integer primary key | value | hash | previous | author | signature
 // always store in topological order
 
-const key = await generateKey()
+const server1Key = await generateKey()
+const user1Key = await generateKey()
 
-const entry1 = await createLogEntry(key, 0, [])
-const entry1b = await createLogEntry(key, 0, [])
-const entry2 = await createLogEntry(key, 2, [entry1.hash])
+const usersMapRoot = await createLogEntry(server1Key, null, [])
 
-console.dir(entry1, { depth: null });
-console.dir(entry1b, { depth: null });
-console.dir(entry2, { depth: null });
+const createUser1Entry = await createLogEntry(server1Key, {
+    operation: "create",
+    key: await exportPublicKey(user1Key),
+    name: "Moritz Hedtke",
+    role: "admin",
+    passwordHash: "this-is-super-secret-and-should-not-be-sent-to-unauthorized-clients"
+}, [])
+
+const createServer1Entry = await createLogEntry(server1Key, {
+    operation: "create",
+    key: await exportPublicKey(server1Key),
+    name: "Server 1",
+    role: "server"
+}, [])
+
+const usersMapEntry1 = await createLogEntry(server1Key, {
+    operation: "put",
+    value: createServer1Entry.hash
+}, [usersMapRoot.hash])
+
+const usersMapEntry2 = await createLogEntry(server1Key, {
+    operation: "put",
+    value: createUser1Entry.hash
+}, [usersMapEntry1.hash])
+
+//const entry2 = await createLogEntry(server1Key, 2, [entry1.hash])
+
+console.dir(usersMapRoot, { depth: null });
+console.dir(createUser1Entry, { depth: null });
+console.dir(usersMapEntry2, { depth: null });
+
+
+
+
+// implementation of map
+// create-entry key value (may be another log, maybe lazy, only store head hash there)
+// delete-entry key (maybe allow readding?, yes causality allows this)
