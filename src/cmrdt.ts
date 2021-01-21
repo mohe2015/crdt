@@ -213,5 +213,17 @@ const usersMapPermanentlyDeleteEntry2 = await createLogEntry(server1Key, {
 // now the user can verify the chain but doesn't know the data (except for bruteforce GODDAMMIT)
 
 // maybe actually an unverified entry is better (removing everything except hash also to identify the entry). All users that can write there are trusted anyways so this should be fine.
-// maybe the delete user should resign the deletion at least. then there is somebody to blame. (this makes sense as otherwise nobody could verify if it's allowed to be removed)
+// maybe the delete user should re-sign the deletion at least. then there is somebody to blame. (this makes sense as otherwise nobody could verify if it's allowed to be removed)
 // users can delete their own entries.
+
+// entry 1 is added
+// entry 2 based on entry 1 is added
+// entry 3 based on entry 1 is added
+// a deletion request for entry 1 based on entry 1 is added (this modifies the existing entry 1 to an empty entry with an invalid hash / special contents signed by the deleter)
+// the deletion request is propagated and all receivers SHALL delete the original content and replace it with the signed by the deleter entry.
+// if you sync from entry 0, you directly get the entry signed by the deleter and also the later deletion request. (this is more or less a remove-wins-set for all hashes, it commutes at deletion)
+
+// if you sync after entry 1 you apply the deletion request as soon as you get it.
+
+// this may break the contents of entries following entry 1 if they are based on it. the underlying merge strategy MUST be resilient to such things. therefore last writer wins etc. may be risky 
+// as it may leak data that should not be leaked from the previous entry. further consequencdes need to be evaluated throughougly!
