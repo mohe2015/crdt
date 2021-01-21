@@ -227,3 +227,4 @@ const usersMapPermanentlyDeleteEntry2 = await createLogEntry(server1Key, {
 
 // this may break the contents of entries following entry 1 if they are based on it. the underlying merge strategy MUST be resilient to such things. therefore last writer wins etc. may be risky 
 // as it may leak data that should not be leaked from the previous entry. further consequencdes need to be evaluated throughougly!
+// e.g. for text this may remove children that should not have been affected. the protocol SHOULD be designed to be resilient to that but the importance is that data MUST be deleted reliably if possible.
