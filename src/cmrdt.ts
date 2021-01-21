@@ -69,7 +69,7 @@ type CmRDTLog<T> = Readonly<CmRDTLogEntry<T>[]>
 async function createLogEntry<T>(signKey: CryptoKeyPair, value: T, previousHashes: ArrayBuffer[]): Promise<CmRDTLogEntry<T>> {
     const objectHash = await hashObject(value)
     const author = await exportPublicKey(signKey)
-    const random = crypto.getRandomValues(new Uint8Array(64)) // 512
+    const random = crypto.getRandomValues(new Uint8Array(64)) // 512 may not be needed if the same data would not matter (e.g. NOT for a counter +1)
     const everything = new Uint8Array(author.byteLength + objectHash.byteLength + random.byteLength + previousHashes.reduce<number>((prev, curr) => prev + curr.byteLength, 0))
     everything.set(new Uint8Array(author), 0)
     everything.set(new Uint8Array(objectHash), author.byteLength)
@@ -144,6 +144,7 @@ const user1Key = await generateKey()
 
 const usersMapRoot = await createLogEntry(server1Key, null, [])
 
+
 const createUser1Entry = await createLogEntry(server1Key, {
     operation: "create",
     key: await exportPublicKey(user1Key),
@@ -158,6 +159,7 @@ const createServer1Entry = await createLogEntry(server1Key, {
     name: "Server 1",
     role: "server"
 }, [])
+
 
 const usersMapEntry1 = await createLogEntry(server1Key, {
     operation: "put",
@@ -180,4 +182,36 @@ console.dir(usersMapEntry2, { depth: null });
 
 // implementation of map
 // create-entry key value (may be another log, maybe lazy, only store head hash there)
-// delete-entry key (maybe allow readding?, yes causality allows this)
+// delete-entry key (maybe allow re-adding?, yes causality allows this)
+
+
+// gdpr compliance (right of deletion)
+// probably custom operations for every type are needed.
+// e.g. if there is a full update / override entry then the old entry could likely be removed
+
+// usersMap
+const usersMapPermanentlyDeleteEntry2 = await createLogEntry(server1Key, {
+    operation: "gdpr-delete",
+    value: usersMapEntry2.hash
+}, [usersMapEntry2.hash])
+
+// probably the original hash should be kept in history but random and value should be removed
+// so the data can not be reconstructed. this of course breaks the cryptographic verifyability
+// this is likely pretty bad as it would allow malicious users to add fake entries
+// maybe just don't propagate that entry at all as it is not verified any more
+// but then chains based on it are broken
+
+// what if: we remove everything except of the hash (because we need it for future entry checking)
+// you can't send that empty object to somebody else because it's not signed -> this is a problem as these users can't verify the chain
+// you only trust it if you got the original one and deleted the data later
+
+// as somebody who knows the original data COULD prove to anyone that the user sent that data by showing that the hash matches it shouldn't matter if we keep all other data except the actual value
+// this would leak the user but it MAY be acceptable to do that
+
+// perfect forward secrecy would be needed but this would make the whole thing useless as you couldn't trust the data any more (this would likely only work if all recipients are known ahead of time)
+
+// now the user can verify the chain but doesn't know the data (except for bruteforce GODDAMMIT)
+
+// maybe actually an unverified entry is better (removing everything except hash also to identify the entry). All users that can write there are trusted anyways so this should be fine.
+// maybe the delete user should resign the deletion at least. then there is somebody to blame. (this makes sense as otherwise nobody could verify if it's allowed to be removed)
+// users can delete their own entries.
