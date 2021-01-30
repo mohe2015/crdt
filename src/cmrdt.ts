@@ -112,9 +112,10 @@ async function createLogEntry<T>(
   return entry;
 }
 
-async function appendToLog<T>(originalLog: CmRDTLog<T>, addToLog: CmRDTLog<T>): Promise<CmRDTLog<T>> {
-
-  throw new Error("not implemented")
+async function logToState<S, T>(currentState: S, remainingLog: CmRDTLog<T>, addLogEntryToState: (state: S, entry: CmRDTLogEntry<T>) => S): Promise<S> {
+  return remainingLog.reduce((previousValue, currentValue) => {
+    return addLogEntryToState(previousValue, currentValue);
+  }, currentState)
 }
 
 // allow changing your keys
