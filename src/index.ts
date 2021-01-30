@@ -31,47 +31,13 @@ import {
 } from './crypto.js';
 import { webcrypto as crypto } from 'crypto';
 
+// TODO use https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist
+
 export async function hashObject<T>(object: T): Promise<ArrayBuffer> {
   const stringified = stringify(object);
   const enc = new TextEncoder();
   return await crypto.subtle.digest('SHA-512', enc.encode(stringified));
 }
-
-// binary based protocol for efficiency
-
-// alternative implementation with history (simplest true wins case)
-// store the following:
-// identifier value previous-hashes
-
-// counter
-// identifier add random-hash (to prevent merging of unrelated adds) previous-hashes (to prevent duplicate application)
-//       5
-//  +1       +2
-// +2  +1   +1  +1
-// merge merge merge
-// 13
-
-// grow only / two phase set
-// {}
-// +{"elephant"}  +{"blablub"}
-// -{"blablub"}
-// merge merge merge
-// conflict, resolve by client id or some other ramdon shit / remove wins or whatever although this may easily allow readding
-
-// last writer wins
-// "hello"
-// ="world"
-// ="test"     ="jojo"
-//      conflict, random resolution by id or timestamp or so
-
-// multiple values
-// "hello"
-// ="test" = "jojo"
-//    \      /
-//     \    /
-//      \  /
-//       \/
-//      ="cat"   // this would be an explicit conflict resolution
 
 type CmRDTLogEntry<T> = Readonly<{
   value: T;
@@ -84,7 +50,50 @@ type CmRDTLogEntry<T> = Readonly<{
 
 type CmRDTLog<T> = Readonly<CmRDTLogEntry<T>[]>;
 
-// https://github.com/orbitdb/ipfs-log/blob/master/API.md#new-log-ipfs-id contains an interesting example
+abstract class CmRDT {
+  abstract initialize(): Promise<void>;
+
+}
+
+// NEW DATABASE DESIGN
+// out of line auto-incrementing integer primary key | value | hash | previous | author | signature
+// always store in topological order
+
+class IndexedDbCmRDT extends CmRDT {
+
+  initialize() {
+    return new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("cmrdt", 1)
+      request.addEventListener("upgradeneeded", () => {
+        const objectStore = request.result.createObjectStore("log", {
+          autoIncrement: true,
+          keyPath: ""
+        });
+
+        
+      });
+      request.addEventListener("error", (event) => {
+        reject(event);
+      });
+      request.addEventListener("success", () => {
+        resolve(request.result);
+      })
+      request.addEventListener("blocked", () => {
+        // TODO FIXME
+        alert("blocked");
+      })
+    });
+  }
+}
+
+// TODO postgresql implementation
+
+// binary based protocol for efficiency
+
+// alternative implementation with history (simplest true wins case)
+// store the following:
+// identifier value previous-hashes
+
 async function createLogEntry<T>(
   signKey: CryptoKeyPair,
   value: T,
@@ -124,9 +133,6 @@ async function logToState<S, T>(currentState: S, remainingLog: CmRDTLog<T>, addL
     return addLogEntryToState(previousValue, currentValue);
   }, currentState)
 }
-
-// allow changing your keys
-// this is basically impossible decentralized as two changes would conflict and you wouldn't know how to handle that. probably only revocation should be implemented so afterwards no messages from that user are valid.
 
 // TODO FIXME store name, role and signed identity somewhere to allow verification
 // this could be send on connect, but for updates you would also need to send this if the user is not known to the other person
@@ -168,9 +174,6 @@ async function logToState<S, T>(currentState: S, remainingLog: CmRDTLog<T>, addL
 // var index = objectStore.index('revision');
 // index.openCursor(null, 'prev');
 
-// NEW DATABASE DESIGN
-// out of line auto-incrementing integer primary key | value | hash | previous | author | signature
-// always store in topological order
 
 const server1Key = await generateKey();
 const user1Key = await generateKey();
