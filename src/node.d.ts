@@ -21,6 +21,6 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-declare module "crypto" {
-    export let webcrypto: Crypto
+declare module 'crypto' {
+  export let webcrypto: Crypto;
 }

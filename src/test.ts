@@ -21,9 +21,9 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import './cmrdt.js'
+import './cmrdt.js';
 
- /*
+/*
 import { GrowOnlyCounter,  mergeGrowOnlyCounter,  Node, valueOfGrowOnlyCounter } from "./index.js"
 import { incrementGrowOnlyCounter, LastWriterWins, mergeLastWriterWins, updateLastWriterWins } from "./index.js"
 import stringify from 'fast-json-stable-stringify';

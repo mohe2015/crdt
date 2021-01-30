@@ -27,29 +27,21 @@ import stringify from 'fast-json-stable-stringify';
 /// <reference path="nodejs.d.ts" />
 import { webcrypto as crypto } from 'crypto';
 
-
 export async function hashObject<T>(object: T): Promise<ArrayBuffer> {
   const stringified = stringify(object);
   const enc = new TextEncoder();
-  return await crypto.subtle.digest("SHA-512", enc.encode(stringified))
+  return await crypto.subtle.digest('SHA-512', enc.encode(stringified));
   //const hashArray = Array.from(new Uint8Array(hashBuffer));                     // convert buffer to byte array
   //return hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
 }
 
 function intersect(a: string[], b: string[]) {
   const setB = new Set(b);
-  return [...new Set(a)].filter(x => setB.has(x));
+  return [...new Set(a)].filter((x) => setB.has(x));
 }
-
-
-
 
 // TODO FIXME most of these should store a change history to allow tracking that and
 // also to allow reverting
-
-
-
-
 
 // use a public key so the change is also signed (allows decentralized replication in the future)
 // sign it by the server
@@ -57,53 +49,85 @@ function intersect(a: string[], b: string[]) {
 // https://github.com/yjs/yjs
 // https://www.youtube.com/watch?v=0l5XgnQ6rB4&feature=youtu.be
 
-export type Node = Readonly<string>
+export type Node = Readonly<string>;
 
 // https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type#Known_CRDTs
 
-export type ModifiableGrowOnlyCounter = { [id: string]: number }
-export type GrowOnlyCounter = Readonly<ModifiableGrowOnlyCounter>
+export type ModifiableGrowOnlyCounter = { [id: string]: number };
+export type GrowOnlyCounter = Readonly<ModifiableGrowOnlyCounter>;
 
-export function valueOfGrowOnlyCounter(replicatedCounter: GrowOnlyCounter): number {
-  return Object.values(replicatedCounter).reduce((prev, curr) => prev + curr)
+export function valueOfGrowOnlyCounter(
+  replicatedCounter: GrowOnlyCounter,
+): number {
+  return Object.values(replicatedCounter).reduce((prev, curr) => prev + curr);
 }
 
-export function mergeGrowOnlyCounter(a: GrowOnlyCounter, b: GrowOnlyCounter): GrowOnlyCounter {
-  const object: ModifiableGrowOnlyCounter = {}
+export function mergeGrowOnlyCounter(
+  a: GrowOnlyCounter,
+  b: GrowOnlyCounter,
+): GrowOnlyCounter {
+  const object: ModifiableGrowOnlyCounter = {};
   for (const nodeId in a) {
-    object[nodeId] = a[nodeId]
+    object[nodeId] = a[nodeId];
   }
   for (const nodeId in b) {
     if (b[nodeId] > (object[nodeId] || 0)) {
-      object[nodeId] = b[nodeId]
+      object[nodeId] = b[nodeId];
     }
   }
-  return object
+  return object;
 }
 
-export function incrementGrowOnlyCounter(growOnlyCounter: GrowOnlyCounter, id: string, increment: number): GrowOnlyCounter {
+export function incrementGrowOnlyCounter(
+  growOnlyCounter: GrowOnlyCounter,
+  id: string,
+  increment: number,
+): GrowOnlyCounter {
   return Object.assign({}, growOnlyCounter, {
-    [id]: (growOnlyCounter[id] || 0) + increment
-  })
+    [id]: (growOnlyCounter[id] || 0) + increment,
+  });
 }
 
+export type PositiveNegativeCounter = Readonly<
+  [positive: GrowOnlyCounter, negative: GrowOnlyCounter]
+>;
 
-export type PositiveNegativeCounter = Readonly<[positive: GrowOnlyCounter, negative: GrowOnlyCounter]>
-
-export function valueOfPositiveNegativeCounter(positiveNegativeCounter: PositiveNegativeCounter): number {
-  return valueOfGrowOnlyCounter(positiveNegativeCounter[0]) - valueOfGrowOnlyCounter(positiveNegativeCounter[1])
+export function valueOfPositiveNegativeCounter(
+  positiveNegativeCounter: PositiveNegativeCounter,
+): number {
+  return (
+    valueOfGrowOnlyCounter(positiveNegativeCounter[0]) -
+    valueOfGrowOnlyCounter(positiveNegativeCounter[1])
+  );
 }
 
-export function mergePositiveNegativeCounter(a: PositiveNegativeCounter, b: PositiveNegativeCounter): PositiveNegativeCounter {
-  return [mergeGrowOnlyCounter(a[0], b[0]), mergeGrowOnlyCounter(a[1], b[1])]
+export function mergePositiveNegativeCounter(
+  a: PositiveNegativeCounter,
+  b: PositiveNegativeCounter,
+): PositiveNegativeCounter {
+  return [mergeGrowOnlyCounter(a[0], b[0]), mergeGrowOnlyCounter(a[1], b[1])];
 }
 
-export function addToPositiveNegativeCounter(positiveNegativeCounter: PositiveNegativeCounter, id: string, increment: number): PositiveNegativeCounter {
-  return [incrementGrowOnlyCounter(positiveNegativeCounter[0], id, increment), positiveNegativeCounter[1]]
+export function addToPositiveNegativeCounter(
+  positiveNegativeCounter: PositiveNegativeCounter,
+  id: string,
+  increment: number,
+): PositiveNegativeCounter {
+  return [
+    incrementGrowOnlyCounter(positiveNegativeCounter[0], id, increment),
+    positiveNegativeCounter[1],
+  ];
 }
 
-export function subtractFromPositiveNegativeCounter(positiveNegativeCounter: PositiveNegativeCounter, id: string, subtract: number): PositiveNegativeCounter {
-  return [positiveNegativeCounter[0], incrementGrowOnlyCounter(positiveNegativeCounter[1], id, subtract)]
+export function subtractFromPositiveNegativeCounter(
+  positiveNegativeCounter: PositiveNegativeCounter,
+  id: string,
+  subtract: number,
+): PositiveNegativeCounter {
+  return [
+    positiveNegativeCounter[0],
+    incrementGrowOnlyCounter(positiveNegativeCounter[1], id, subtract),
+  ];
 }
 
 /*
@@ -197,82 +221,82 @@ export function mergeGrowOnlySet<T>(self: PerUserGrowOnlySet<T>, update: PerUser
 }
 */
 
-
-
-
-export type FalseWins = Readonly<boolean>
+export type FalseWins = Readonly<boolean>;
 
 export function mergeFalseWins(a: FalseWins, b: FalseWins): boolean {
-  return a && b
+  return a && b;
 }
 
-
-
-export type TrueWins = Readonly<boolean>
+export type TrueWins = Readonly<boolean>;
 
 export function mergeTrueWins(a: TrueWins, b: TrueWins): boolean {
-  return a || b
+  return a || b;
 }
 
-
-
 // TODO FIXME probably bad implementation
-export type LastWriterWins<T> = Readonly<[object: T, id: string, vectors: { [id: string]: number }]>
+export type LastWriterWins<T> = Readonly<
+  [object: T, id: string, vectors: { [id: string]: number }]
+>;
 
 export function valueOfLastWriterWins<T>(lastWriterWins: LastWriterWins<T>): T {
   return lastWriterWins[0];
 }
 
-export function mergeLastWriterWins<T>(a: LastWriterWins<T>, b: LastWriterWins<T>): LastWriterWins<T> {
-  let aStrictlyGreaterThanB = false
-  let aGreaterThanB = true
-  let bStrictlyGreaterThanA = false
-  let bGreaterThanA = true
+export function mergeLastWriterWins<T>(
+  a: LastWriterWins<T>,
+  b: LastWriterWins<T>,
+): LastWriterWins<T> {
+  let aStrictlyGreaterThanB = false;
+  let aGreaterThanB = true;
+  let bStrictlyGreaterThanA = false;
+  let bGreaterThanA = true;
 
   for (const nodeId in a[2]) {
     if (a[2][nodeId] > (b[2][nodeId] || 0)) {
-      aStrictlyGreaterThanB = true
+      aStrictlyGreaterThanB = true;
     }
     if (a[2][nodeId] < (b[2][nodeId] || 0)) {
-      aGreaterThanB = false
+      aGreaterThanB = false;
     }
   }
 
   for (const nodeId in b[2]) {
     if (b[2][nodeId] > (a[2][nodeId] || 0)) {
-      bStrictlyGreaterThanA = true
+      bStrictlyGreaterThanA = true;
     }
     if (b[2][nodeId] < (a[2][nodeId] || 0)) {
-      bGreaterThanA = false
+      bGreaterThanA = false;
     }
   }
 
   if (aGreaterThanB && aStrictlyGreaterThanB) {
-    return a
+    return a;
   } else if (bGreaterThanA && bStrictlyGreaterThanA) {
-    return b
+    return b;
   } else if (a[1] > b[1]) {
-    console.warn("conflict ", a, b)
-    return a
+    console.warn('conflict ', a, b);
+    return a;
   } else {
-    console.warn("conflict ", b, a)
-    return b
+    console.warn('conflict ', b, a);
+    return b;
   }
 }
 
-export function updateLastWriterWins<T>(lastWriterWins: LastWriterWins<T>, id: string, value: T): LastWriterWins<T> {
-  return [value, id, Object.assign({}, lastWriterWins[2], {
-    [id]: (lastWriterWins[2][id] || 0) + 1
-  })]
+export function updateLastWriterWins<T>(
+  lastWriterWins: LastWriterWins<T>,
+  id: string,
+  value: T,
+): LastWriterWins<T> {
+  return [
+    value,
+    id,
+    Object.assign({}, lastWriterWins[2], {
+      [id]: (lastWriterWins[2][id] || 0) + 1,
+    }),
+  ];
 }
 
-
-
-
 //export type MultiWriterValue<T>
-
-
-
 
 // user count (just for fun)
 

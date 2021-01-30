@@ -25,37 +25,46 @@
 import { webcrypto as crypto } from 'crypto';
 
 export async function generateKey(): Promise<CryptoKeyPair> {
-    return await crypto.subtle.generateKey({
-        name: "RSA-PSS",
-        modulusLength: 4096,
-        publicExponent: new Uint8Array([1, 0, 1]),
-        hash: "SHA-512"
+  return await crypto.subtle.generateKey(
+    {
+      name: 'RSA-PSS',
+      modulusLength: 4096,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: 'SHA-512',
     },
     true,
-    ["sign", "verify"])
+    ['sign', 'verify'],
+  );
 }
 
-export async function sign(key: CryptoKeyPair, data: ArrayBuffer): Promise<ArrayBuffer> {
-    return await crypto.subtle.sign({
-        name: "RSA-PSS",
-        saltLength: 512/8
-    }, key.privateKey, data)
+export async function sign(
+  key: CryptoKeyPair,
+  data: ArrayBuffer,
+): Promise<ArrayBuffer> {
+  return await crypto.subtle.sign(
+    {
+      name: 'RSA-PSS',
+      saltLength: 512 / 8,
+    },
+    key.privateKey,
+    data,
+  );
 }
 
-export async function exportPrivateKey(key: CryptoKeyPair): Promise<ArrayBuffer> {
-    return crypto.subtle.exportKey(
-        "pkcs8",
-        key.privateKey
-    );
+export async function exportPrivateKey(
+  key: CryptoKeyPair,
+): Promise<ArrayBuffer> {
+  return crypto.subtle.exportKey('pkcs8', key.privateKey);
 }
 
-export async function exportPublicKey(key: CryptoKeyPair): Promise<ArrayBuffer> {
-    return crypto.subtle.exportKey(
-        "spki",
-        key.publicKey
-    );
+export async function exportPublicKey(
+  key: CryptoKeyPair,
+): Promise<ArrayBuffer> {
+  return crypto.subtle.exportKey('spki', key.publicKey);
 }
 
-export async function hashArrayBuffer(buffer: ArrayBuffer): Promise<ArrayBuffer> {
-    return await crypto.subtle.digest("SHA-512", buffer)
+export async function hashArrayBuffer(
+  buffer: ArrayBuffer,
+): Promise<ArrayBuffer> {
+  return await crypto.subtle.digest('SHA-512', buffer);
 }
