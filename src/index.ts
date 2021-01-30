@@ -50,22 +50,20 @@ type CmRDTLogEntry<T> = Readonly<{
 
 type CmRDTLog<T> = Readonly<CmRDTLogEntry<T>[]>;
 
-abstract class CmRDTFactory {
-  abstract initialize<T>(): Promise<CmRDT<T>>;
+interface CmRDTFactory {
+  initialize<T>(): Promise<CmRDT<T>>;
 }
 
-abstract class CmRDT<T> {
-  abstract insertEntry<T>(entry: CmRDTLogEntry<T>): void;
+interface CmRDT<T> {
+  insertEntry(entry: CmRDTLogEntry<T>): Promise<void>;
+
+
 }
 
-// NEW DATABASE DESIGN
-// out of line auto-incrementing integer primary key | value | hash | previous | author | signature
-// always store in topological order
+class IndexedDBCmRDTFactory implements CmRDTFactory {
 
-class IndexedDBCmRDTFactory extends CmRDTFactory {
-
-  initialize() {
-    return new Promise<IndexedDBCmRDT>((resolve, reject) => {
+  initialize<T>() {
+    return new Promise<IndexedDBCmRDT<T>>((resolve, reject) => {
       const request = indexedDB.open("cmrdt", 1)
       request.addEventListener("upgradeneeded", () => {
         const objectStore = request.result.createObjectStore("log", {
@@ -81,7 +79,7 @@ class IndexedDBCmRDTFactory extends CmRDTFactory {
         reject(request.error);
       });
       request.addEventListener("success", () => {
-        resolve(new IndexedDBCmRDT(request.result));
+        resolve(new IndexedDBCmRDT<T>(request.result));
       })
       request.addEventListener("blocked", () => {
         // TODO FIXME
@@ -91,12 +89,52 @@ class IndexedDBCmRDTFactory extends CmRDTFactory {
   }
 }
 
-class IndexedDBCmRDT extends CmRDT {
+class IndexedDBCmRDT<T> implements CmRDT<T> {
   idbDatabase: IDBDatabase;
 
   constructor(idbDatabase: IDBDatabase) {
-    super();
     this.idbDatabase = idbDatabase;
+  }
+
+  handleRequest<T>(request: IDBRequest<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      request.addEventListener('error', (event) => {
+        event.stopPropagation() // as the name implies this prevents propagation
+        reject(request.error)
+      })
+      request.addEventListener('success', () => {
+        resolve(request.result)
+      })
+    })
+  }
+
+  getTransaction(storeNames: string | Iterable<string>, mode?: IDBTransactionMode): [IDBTransaction, Promise<void>] {
+    const transaction = this.idbDatabase.transaction(storeNames, mode);
+    const done = new Promise<void>((resolve, reject) => {
+      transaction.addEventListener('abort', () => {
+        console.warn(transaction.error)
+        resolve() // aborting was likely done explicitly so this SHOULD be fine
+      })
+      transaction.addEventListener('complete', () => {
+        resolve()
+      })
+      transaction.addEventListener('error', (event) => {
+        event.stopPropagation()
+        reject(transaction.error)
+      })
+    })
+    return [transaction, done]
+  }
+
+  // NEW DATABASE DESIGN
+  // out of line auto-incrementing integer primary key | value | hash | previous | author | signature
+  // always store in topological order
+
+  async insertEntry(entry: CmRDTLogEntry<T>): Promise<void> {
+    const [transaction, done] = this.getTransaction(["log"], "readwrite");
+    const objectStore = transaction.objectStore("log");
+    await this.handleRequest(objectStore.add(entry));
+    await done
   }
 }
 
