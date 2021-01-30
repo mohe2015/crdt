@@ -136,6 +136,16 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
     await this.handleRequest(objectStore.add(entry));
     await done
   }
+
+  // index.openCursor(null, 'prev');
+  // collect elements (maybe as an iterator). store their previousHashes. if you got all previousHashes you found all heads?
+  async getHeads(): Promise<void> {
+    // TODO
+  }
+
+  async getEntriesAfterHeads(heads: ArrayBuffer[]) {
+    // TODO
+  }
 }
 
 // TODO postgresql implementation
@@ -203,29 +213,6 @@ async function logToState<S, T>(currentState: S, remainingLog: CmRDTLog<T>, addL
 // roles: type:server, type:admin, type:manager, type:user
 
 // also contains password, etc. but this is only send between servers and admins
-
-// heads can be found by looking for hashes that are not in any "previous"
-// how to do this efficiently
-
-// first entry has no previous
-
-// synchronization: both clients send their heads
-// both look for the entries and search for all entries after them
-// send these
-
-// 🚧 Binary keys are new in this edition. They are supported in Chrome 58, Firefox 51, and Safari 10.1. 🚧
-// database (indexeddb)
-// hash(primary key (as ArrayBuffer))
-// value as a normal value
-//
-
-// required search strategies: find entry by hash (easy)
-// finding heads: (TODO maybe store incremnting integer (use normal generator)) multiEntry
-
-// topological sort? (should be automatic if we use hashes for dependencies?)
-// var index = objectStore.index('revision');
-// index.openCursor(null, 'prev');
-
 
 const server1Key = await generateKey();
 const user1Key = await generateKey();
