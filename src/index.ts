@@ -50,39 +50,53 @@ type CmRDTLogEntry<T> = Readonly<{
 
 type CmRDTLog<T> = Readonly<CmRDTLogEntry<T>[]>;
 
-abstract class CmRDT {
-  abstract initialize(): Promise<void>;
+abstract class CmRDTFactory {
+  abstract initialize<T>(): Promise<CmRDT<T>>;
+}
 
+abstract class CmRDT<T> {
+  abstract insertEntry<T>(entry: CmRDTLogEntry<T>): void;
 }
 
 // NEW DATABASE DESIGN
 // out of line auto-incrementing integer primary key | value | hash | previous | author | signature
 // always store in topological order
 
-class IndexedDbCmRDT extends CmRDT {
+class IndexedDBCmRDTFactory extends CmRDTFactory {
 
   initialize() {
-    return new Promise<IDBDatabase>((resolve, reject) => {
+    return new Promise<IndexedDBCmRDT>((resolve, reject) => {
       const request = indexedDB.open("cmrdt", 1)
       request.addEventListener("upgradeneeded", () => {
         const objectStore = request.result.createObjectStore("log", {
           autoIncrement: true,
           keyPath: ""
         });
-
-        
+        objectStore.createIndex("hash", "hash", {
+          multiEntry: false,
+          unique: true
+        })
       });
-      request.addEventListener("error", (event) => {
-        reject(event);
+      request.addEventListener("error", () => {
+        reject(request.error);
       });
       request.addEventListener("success", () => {
-        resolve(request.result);
+        resolve(new IndexedDBCmRDT(request.result));
       })
       request.addEventListener("blocked", () => {
         // TODO FIXME
-        alert("blocked");
+        reject(new Error("database blocked"));
       })
     });
+  }
+}
+
+class IndexedDBCmRDT extends CmRDT {
+  idbDatabase: IDBDatabase;
+
+  constructor(idbDatabase: IDBDatabase) {
+    super();
+    this.idbDatabase = idbDatabase;
   }
 }
 
