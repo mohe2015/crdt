@@ -21,312 +21,259 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-//import equal from 'fast-deep-equal/es6';
-import stringify from 'fast-json-stable-stringify';
 
-/// <reference path="nodejs.d.ts" />
+import stringify from 'fast-json-stable-stringify';
+import {
+  exportPublicKey,
+  generateKey,
+  hashArrayBuffer,
+  sign,
+} from './crypto.js';
 import { webcrypto as crypto } from 'crypto';
 
 export async function hashObject<T>(object: T): Promise<ArrayBuffer> {
   const stringified = stringify(object);
   const enc = new TextEncoder();
   return await crypto.subtle.digest('SHA-512', enc.encode(stringified));
-  //const hashArray = Array.from(new Uint8Array(hashBuffer));                     // convert buffer to byte array
-  //return hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
 }
 
-function intersect(a: string[], b: string[]) {
-  const setB = new Set(b);
-  return [...new Set(a)].filter((x) => setB.has(x));
-}
+// binary based protocol for efficiency
 
-// TODO FIXME most of these should store a change history to allow tracking that and
-// also to allow reverting
+// alternative implementation with history (simplest true wins case)
+// store the following:
+// identifier value previous-hashes
 
-// use a public key so the change is also signed (allows decentralized replication in the future)
-// sign it by the server
+// counter
+// identifier add random-hash (to prevent merging of unrelated adds) previous-hashes (to prevent duplicate application)
+//       5
+//  +1       +2
+// +2  +1   +1  +1
+// merge merge merge
+// 13
 
-// https://github.com/yjs/yjs
-// https://www.youtube.com/watch?v=0l5XgnQ6rB4&feature=youtu.be
+// grow only / two phase set
+// {}
+// +{"elephant"}  +{"blablub"}
+// -{"blablub"}
+// merge merge merge
+// conflict, resolve by client id or some other ramdon shit / remove wins or whatever although this may easily allow readding
 
-export type Node = Readonly<string>;
+// last writer wins
+// "hello"
+// ="world"
+// ="test"     ="jojo"
+//      conflict, random resolution by id or timestamp or so
 
-// https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type#Known_CRDTs
+// multiple values
+// "hello"
+// ="test" = "jojo"
+//    \      /
+//     \    /
+//      \  /
+//       \/
+//      ="cat"   // this would be an explicit conflict resolution
 
-export type ModifiableGrowOnlyCounter = { [id: string]: number };
-export type GrowOnlyCounter = Readonly<ModifiableGrowOnlyCounter>;
+type CmRDTLogEntry<T> = Readonly<{
+  value: T;
+  hash: ArrayBuffer;
+  random: ArrayBuffer;
+  previousHashes: ArrayBuffer[];
+  author: ArrayBuffer;
+  signature: ArrayBuffer;
+}>;
 
-export function valueOfGrowOnlyCounter(
-  replicatedCounter: GrowOnlyCounter,
-): number {
-  return Object.values(replicatedCounter).reduce((prev, curr) => prev + curr);
-}
+type CmRDTLog<T> = Readonly<CmRDTLogEntry<T>[]>;
 
-export function mergeGrowOnlyCounter(
-  a: GrowOnlyCounter,
-  b: GrowOnlyCounter,
-): GrowOnlyCounter {
-  const object: ModifiableGrowOnlyCounter = {};
-  for (const nodeId in a) {
-    object[nodeId] = a[nodeId];
-  }
-  for (const nodeId in b) {
-    if (b[nodeId] > (object[nodeId] || 0)) {
-      object[nodeId] = b[nodeId];
-    }
-  }
-  return object;
-}
-
-export function incrementGrowOnlyCounter(
-  growOnlyCounter: GrowOnlyCounter,
-  id: string,
-  increment: number,
-): GrowOnlyCounter {
-  return Object.assign({}, growOnlyCounter, {
-    [id]: (growOnlyCounter[id] || 0) + increment,
-  });
-}
-
-export type PositiveNegativeCounter = Readonly<
-  [positive: GrowOnlyCounter, negative: GrowOnlyCounter]
->;
-
-export function valueOfPositiveNegativeCounter(
-  positiveNegativeCounter: PositiveNegativeCounter,
-): number {
-  return (
-    valueOfGrowOnlyCounter(positiveNegativeCounter[0]) -
-    valueOfGrowOnlyCounter(positiveNegativeCounter[1])
-  );
-}
-
-export function mergePositiveNegativeCounter(
-  a: PositiveNegativeCounter,
-  b: PositiveNegativeCounter,
-): PositiveNegativeCounter {
-  return [mergeGrowOnlyCounter(a[0], b[0]), mergeGrowOnlyCounter(a[1], b[1])];
-}
-
-export function addToPositiveNegativeCounter(
-  positiveNegativeCounter: PositiveNegativeCounter,
-  id: string,
-  increment: number,
-): PositiveNegativeCounter {
-  return [
-    incrementGrowOnlyCounter(positiveNegativeCounter[0], id, increment),
-    positiveNegativeCounter[1],
-  ];
-}
-
-export function subtractFromPositiveNegativeCounter(
-  positiveNegativeCounter: PositiveNegativeCounter,
-  id: string,
-  subtract: number,
-): PositiveNegativeCounter {
-  return [
-    positiveNegativeCounter[0],
-    incrementGrowOnlyCounter(positiveNegativeCounter[1], id, subtract),
-  ];
-}
-
-/*
-export type GrowOnlySet<T> = Readonly<{ [hash: string]: T }>
-
-export async function addToGrowOnlySet<T>(growOnlySet: GrowOnlySet<T>, object: T): Promise<GrowOnlySet<T>> {
-  const hashHex = await hashObject(object)
-  return Object.assign({}, growOnlySet, {
-    [hashHex]: object
-  })
-}
-
-export async function valueOfGrowOnlySet<T>(growOnlySet: GrowOnlySet<T>): Promise<GrowOnlySet<T>> {
-  return growOnlySet
-}
-
-export async function valueInGrowOnlySet<T>(growOnlySet: GrowOnlySet<T>, object: T): Promise<boolean> {
-  const hashHex = await hashObject(object)
-  return hashHex in growOnlySet
-}
-
-export async function mergeGrowOnlySet<T>(a: GrowOnlySet<T>, b: GrowOnlySet<T>): Promise<GrowOnlySet<T>> {
-  return Object.assign({}, a, b)
-}
-
-export async function causalityCompareGrowOnlySet<T>(a: GrowOnlySet<T>, b: GrowOnlySet<T>): Promise<number> {
-  const aKeys = Object.keys(a);
-  const bKeys = Object.keys(b);
-  const intersection = intersect(aKeys, bKeys)
-  if (aKeys.length == bKeys.length && intersection.length == aKeys.length) return 0;
-  if (aKeys.length == intersection.length) return -1;
-  if (bKeys.length == intersection.length) return 1;
-  throw new Error("hopefully unreachable") // TODO FIXME this should mean neither
-}
-
-// TODO FIXME remove may be a hash set
-// remove wins
-export type TwoPhaseSet<T> = Readonly<[add: GrowOnlySet<T>, remove: GrowOnlySet<T>]>
-
-export async function valueInTwoPhaseSet<T>(twoPhaseSet: TwoPhaseSet<T>, object: T): Promise<boolean> {
-  return (await valueInGrowOnlySet(twoPhaseSet[0], object)) && !(await valueInGrowOnlySet(twoPhaseSet[1], object))
-}
-
-export async function addToTwoPhaseSet<T>(twoPhaseSet: TwoPhaseSet<T>, object: T): Promise<TwoPhaseSet<T>> {
-  return [await addToGrowOnlySet(twoPhaseSet[0], object), twoPhaseSet[1]]
-}
-
-export async function removeFromTwoPhaseSet<T>(twoPhaseSet: TwoPhaseSet<T>, object: T): Promise<TwoPhaseSet<T>> {
-  // TODO FIXME maybe check if its in the add
-  return [twoPhaseSet[0], await addToGrowOnlySet(twoPhaseSet[1], object)]
-}
-
-// comparison in respect to causality not size of set
-export async function causalityCompareTwoPhaseSet<T>(a: TwoPhaseSet<T>, b: TwoPhaseSet<T>): Promise<number> {
-  const add = await causalityCompareGrowOnlySet(a[0], b[0])
-  const remove = await causalityCompareGrowOnlySet(a[1], b[1])
-  if (add == remove) return add
-  if (add == 0) return remove
-  if (remove == 0) return add
-  throw new Error("unkown causality")
-  // -1 -1 = -1
-  // -1  0 = -1
-  // -1  1 = dontknow?/error?
-  //  0 -1 = -1
-  //  0  0 = 0
-  //  0  1 = 1
-  //  1 -1 = dontknow?/error?
-  //  1  0 = 1
-  //  1  1 = 1
-}
-*/
-
-/*
-// FIXME this is more like a dictionary. also merging same keys with different values is not working properly
-export type PerUserGrowOnlySet<T> = Readonly<[lastId: number, value: { [id: string]: T }]>//
-
-export function addToGrowOnlySet<T>(growOnlySet: PerUserGrowOnlySet<T>, id: string, add: T): PerUserGrowOnlySet<T> {
-  // key of every value is your id concatenated with an incrementing number
-  // if this already exists something is wrong
-  if ((id+(growOnlySet[0] + 1)) in growOnlySet) {
-    throw new Error("internal consistency problem")
-  }
-  return [growOnlySet[0] + 1, Object.assign({}, growOnlySet[1], {
-    [id+(growOnlySet[0] + 1)]: add
-  })]
-}
-
-// TODO FIXME first one has to be self
-export function mergeGrowOnlySet<T>(self: PerUserGrowOnlySet<T>, update: PerUserGrowOnlySet<T>): PerUserGrowOnlySet<T> {
-  return [self[0], Object.assign({}, self[1], update[1])]
-}
-*/
-
-export type FalseWins = Readonly<boolean>;
-
-export function mergeFalseWins(a: FalseWins, b: FalseWins): boolean {
-  return a && b;
-}
-
-export type TrueWins = Readonly<boolean>;
-
-export function mergeTrueWins(a: TrueWins, b: TrueWins): boolean {
-  return a || b;
-}
-
-// TODO FIXME probably bad implementation
-export type LastWriterWins<T> = Readonly<
-  [object: T, id: string, vectors: { [id: string]: number }]
->;
-
-export function valueOfLastWriterWins<T>(lastWriterWins: LastWriterWins<T>): T {
-  return lastWriterWins[0];
-}
-
-export function mergeLastWriterWins<T>(
-  a: LastWriterWins<T>,
-  b: LastWriterWins<T>,
-): LastWriterWins<T> {
-  let aStrictlyGreaterThanB = false;
-  let aGreaterThanB = true;
-  let bStrictlyGreaterThanA = false;
-  let bGreaterThanA = true;
-
-  for (const nodeId in a[2]) {
-    if (a[2][nodeId] > (b[2][nodeId] || 0)) {
-      aStrictlyGreaterThanB = true;
-    }
-    if (a[2][nodeId] < (b[2][nodeId] || 0)) {
-      aGreaterThanB = false;
-    }
-  }
-
-  for (const nodeId in b[2]) {
-    if (b[2][nodeId] > (a[2][nodeId] || 0)) {
-      bStrictlyGreaterThanA = true;
-    }
-    if (b[2][nodeId] < (a[2][nodeId] || 0)) {
-      bGreaterThanA = false;
-    }
-  }
-
-  if (aGreaterThanB && aStrictlyGreaterThanB) {
-    return a;
-  } else if (bGreaterThanA && bStrictlyGreaterThanA) {
-    return b;
-  } else if (a[1] > b[1]) {
-    console.warn('conflict ', a, b);
-    return a;
-  } else {
-    console.warn('conflict ', b, a);
-    return b;
-  }
-}
-
-export function updateLastWriterWins<T>(
-  lastWriterWins: LastWriterWins<T>,
-  id: string,
+// https://github.com/orbitdb/ipfs-log/blob/master/API.md#new-log-ipfs-id contains an interesting example
+async function createLogEntry<T>(
+  signKey: CryptoKeyPair,
   value: T,
-): LastWriterWins<T> {
-  return [
-    value,
-    id,
-    Object.assign({}, lastWriterWins[2], {
-      [id]: (lastWriterWins[2][id] || 0) + 1,
-    }),
-  ];
+  previousHashes: ArrayBuffer[],
+): Promise<CmRDTLogEntry<T>> {
+  const objectHash = await hashObject(value);
+  const author = await exportPublicKey(signKey);
+  const random = crypto.getRandomValues(new Uint8Array(64));
+  const everything = new Uint8Array(
+      author.byteLength +
+      objectHash.byteLength +
+      random.byteLength +
+      previousHashes.reduce<number>((prev, curr) => prev + curr.byteLength, 0),
+  );
+  everything.set(new Uint8Array(author), 0);
+  everything.set(new Uint8Array(objectHash), author.byteLength);
+  everything.set(random, author.byteLength + objectHash.byteLength);
+  previousHashes.reduce<number>((prev, curr) => {
+    everything.set(new Uint8Array(curr), prev);
+    return prev + curr.byteLength;
+  }, author.byteLength + objectHash.byteLength + random.byteLength);
+  const hash = await hashArrayBuffer(everything);
+
+  const entry: CmRDTLogEntry<T> = {
+    author: author, // TODO use the user database, then we can use a hash of it's public key / the entry in that database. This may also be pretty bad as then everybody knows of all users.
+    hash: hash, // we don't need to transmit this as it can be calculated from the remaining data
+    random: random, // this is to allow adding the same data twice. (maybe put this into data directly?)
+    value: value,
+    previousHashes: previousHashes,
+    signature: await sign(signKey, everything),
+  };
+  return entry;
 }
 
-//export type MultiWriterValue<T>
+async function logToState<S, T>(currentState: S, remainingLog: CmRDTLog<T>, addLogEntryToState: (state: S, entry: CmRDTLogEntry<T>) => S): Promise<S> {
+  return remainingLog.reduce((previousValue, currentValue) => {
+    return addLogEntryToState(previousValue, currentValue);
+  }, currentState)
+}
 
-// user count (just for fun)
+// allow changing your keys
+// this is basically impossible decentralized as two changes would conflict and you wouldn't know how to handle that. probably only revocation should be implemented so afterwards no messages from that user are valid.
 
-// https://github.com/pfrazee/crdt_notes
+// TODO FIXME store name, role and signed identity somewhere to allow verification
+// this could be send on connect, but for updates you would also need to send this if the user is not known to the other person
+// maybe another table which contains that data as key value or so
+// key value could have the advantage that a client can only request keys it knows about.
 
-// https://github.com/alangibson/awesome-crdt
-// SUPER GOOD RESOURCE
+// maybe a database which contains all trusted "servers" which is also updated like this
 
-// https://queue.acm.org/detail.cfm?id=2917756
+// user database:
 
-// pretty good https://www.cs.rutgers.edu/~pxk/417/notes/clocks/index.html
-/*
- To determine if two events are concurrent, do an element-by-element comparison of the corresponding timestamps. If each element of timestamp V is less than or equal to the corresponding element of timestamp W then V causally precedes W and the events are not concurrent. If each element of timestamp V is greater than or equal to the corresponding element of timestamp W then W causally precedes V and the events are not concurrent. If, on the other hand, neither of those conditions apply and some elements in V are greater than while others are less than the corresponding element in W then the events are concurrent. We can summarize it with the pseudocode:
-*/
+// initial element is added client-side
 
-// https://haslab.wordpress.com/2011/07/08/version-vectors-are-not-vector-clocks/
+// entry: author: server-key, value: add-op server-key type:server, signature: self-signed by server
 
-// https://blog.separateconcerns.com/2017-05-07-itc.html
+// then all currently trusted SERVER keys can use add-op and remove-op to add and remove keys
+// roles: type:server, type:admin, type:manager, type:user
 
-// https://scattered-thoughts.net/writing/causal-ordering/
+// also contains password, etc. but this is only send between servers and admins
 
-// http://jtfmumm.com/blog/2015/11/17/crdt-primer-1-defanging-order-theory/
-// TODO http://jtfmumm.com/blog/2015/11/24/crdt-primer-2-convergent-crdts/
+// heads can be found by looking for hashes that are not in any "previous"
+// how to do this efficiently
 
-// TODO https://github.com/ricardobcl/Dotted-Version-Vectors
+// first entry has no previous
 
-// https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type
-// state based
+// synchronization: both clients send their heads
+// both look for the entries and search for all entries after them
+// send these
 
-// vector clocks, dotted vector clocks
+// 🚧 Binary keys are new in this edition. They are supported in Chrome 58, Firefox 51, and Safari 10.1. 🚧
+// database (indexeddb)
+// hash(primary key (as ArrayBuffer))
+// value as a normal value
+//
+
+// required search strategies: find entry by hash (easy)
+// finding heads: (TODO maybe store incremnting integer (use normal generator)) multiEntry
+
+// topological sort? (should be automatic if we use hashes for dependencies?)
+// var index = objectStore.index('revision');
+// index.openCursor(null, 'prev');
+
+// NEW DATABASE DESIGN
+// out of line auto-incrementing integer primary key | value | hash | previous | author | signature
+// always store in topological order
+
+const server1Key = await generateKey();
+const user1Key = await generateKey();
+
+const usersMapRoot = await createLogEntry(server1Key, null, []);
+
+const createUser1Entry = await createLogEntry(
+  server1Key,
+  {
+    operation: 'create',
+    key: await exportPublicKey(user1Key),
+    name: 'Moritz Hedtke',
+    role: 'admin',
+    passwordHash:
+      'this-is-super-secret-and-should-not-be-sent-to-unauthorized-clients',
+  },
+  [],
+);
+
+const createServer1Entry = await createLogEntry(
+  server1Key,
+  {
+    operation: 'create',
+    key: await exportPublicKey(server1Key),
+    name: 'Server 1',
+    role: 'server',
+  },
+  [],
+);
+
+const usersMapEntry1 = await createLogEntry(
+  server1Key,
+  {
+    operation: 'put',
+    value: createServer1Entry.hash,
+  },
+  [usersMapRoot.hash],
+);
+
+const usersMapEntry2 = await createLogEntry(
+  server1Key,
+  {
+    operation: 'put',
+    value: createUser1Entry.hash,
+  },
+  [usersMapEntry1.hash],
+);
+
+//const entry2 = await createLogEntry(server1Key, 2, [entry1.hash])
+
+console.dir(usersMapRoot, { depth: null });
+console.dir(createUser1Entry, { depth: null });
+console.dir(usersMapEntry2, { depth: null });
+
+// implementation of map
+// create-entry key value (may be another log, maybe lazy, only store head hash there)
+// delete-entry key (maybe allow re-adding?, yes causality allows this)
+
+// gdpr compliance (right of deletion)
+// probably custom operations for every type are needed.
+// e.g. if there is a full update / override entry then the old entry could likely be removed
+
+// usersMap
+const usersMapPermanentlyDeleteEntry2 = await createLogEntry(
+  server1Key,
+  {
+    operation: 'gdpr-delete',
+    value: usersMapEntry2.hash,
+  },
+  [usersMapEntry2.hash],
+);
+
+
+// add hash of random and value
+// and then hash of that and author and previous hashes
+// deletion would remove the data, random but keep the hash
+// this would allow us to keep the record itself and the causality
+
+// probably the original hash should be kept in history but random and value should be removed
+// so the data can not be reconstructed. this of course breaks the cryptographic verifyability
+// this is likely pretty bad as it would allow malicious users to add fake entries
+// maybe just don't propagate that entry at all as it is not verified any more
+// but then chains based on it are broken
+
+// maybe actually an unverified entry is better (removing everything except hash also to identify the entry). All users that can write there are trusted anyways so this should be fine.
+// maybe the delete user should re-sign the deletion at least. then there is somebody to blame. (this makes sense as otherwise nobody could verify if it's allowed to be removed)
+// users can delete their own entries.
+
+// entry 1 is added
+// entry 2 based on entry 1 is added
+// entry 3 based on entry 1 is added
+// a deletion request for entry 1 based on entry 1 is added (this modifies the existing entry 1 to an empty entry with an invalid hash / special contents signed by the deleter)
+// the deletion request is propagated and all receivers SHALL delete the original content and replace it with the signed by the deleter entry.
+// if you sync from entry 0, you directly get the entry signed by the deleter and also the later deletion request. (this is more or less a remove-wins-set for all hashes, it commutes at deletion)
+
+// if you sync after entry 1 you apply the deletion request as soon as you get it.
+
+// this may break the contents of entries following entry 1 if they are based on it. the underlying merge strategy MUST be resilient to such things. therefore last writer wins etc. may be risky
+// as it may leak data that should not be leaked from the previous entry. further consequencdes need to be evaluated throughougly!
+// e.g. for text this may remove children that should not have been affected. the protocol SHOULD be designed to be resilient to that but the importance is that data MUST be deleted reliably if possible.
+
+// handle deleting a deletion request (creates a new deletion request for both the original and the deleted entry)
+
 
 /*
 biggest problem: HOW TO STORE IN DATABASE? / USE A DECENTRALIZED DATABASE?
