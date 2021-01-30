@@ -112,6 +112,11 @@ async function createLogEntry<T>(
   return entry;
 }
 
+async function appendToLog<T>(originalLog: CmRDTLog<T>, addToLog: CmRDTLog<T>): Promise<CmRDTLog<T>> {
+
+  throw new Error("not implemented")
+}
+
 // allow changing your keys
 // this is basically impossible decentralized as two changes would conflict and you wouldn't know how to handle that. probably only revocation should be implemented so afterwards no messages from that user are valid.
 
