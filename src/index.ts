@@ -148,6 +148,22 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
   }
 }
 
+// vector clocks
+// list of entries with vector clocks
+// peer peer peer peer
+// 1    0    0    0    +{1} author signature (nobody knows that the order is correct)
+// 0    0    0    1    +{2}
+// causally afterwards:
+// 1    0    1    0    +{3}
+// 1    1    1    1    -{3}
+
+// likely major advantage of DAG is that causality can be proven
+// but only in one direction (you can still add entries to the past)
+// but not to the future
+// actually I don't think it's that big of an advantage
+
+// with DAG you can purposely not base your change on somebody else's e.g if you don't trust them
+
 // TODO postgresql implementation
 
 // binary based protocol for efficiency
@@ -185,6 +201,7 @@ async function createLogEntry<T>(
     random: random, // this is to allow adding the same data twice. (maybe put this into data directly?)
     value: value,
     previousHashes: previousHashes,
+    // TODO sign the entry somehow that you could publish a secret to let anyone sign it when you delete the entry. Then nobody can prove what the (~~original contents where~~) that you signed it.
     signature: await sign(signKey, everything),
   };
   return entry;
