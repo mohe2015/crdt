@@ -156,7 +156,21 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
     // this means you need to trust the peer to not send you garbage as it could've just generated a big graph of random nodes that it sends to you
     // see below for some ideas to circumvent this but there wasn't any similarily efficient way.
 
+    const [transaction, done] = this.getTransaction(["log"], "readonly");
+    const logObjectStore = transaction.objectStore("log");
 
+    // send your heads to the other peer. you will then find unknown hashes in their heads which you can request
+    const unknownHashes = remoteHeads
+    while (unknownHashes.length > 0) {
+      const nextUnknownHash = unknownHashes.pop() // length > 0
+      if (nextUnknownHash == undefined) break;
+      if (this.handleRequest(logObjectStore.getKey(nextUnknownHash)) === undefined) {
+        // TODO request entry from remove
+
+        // TODO add that entry
+        // TODO push it's previousHashes into unknownHashes
+      }
+    }
 
     // also https://github.com/orbitdb/ipfs-log/blob/master/src/log.js
 
@@ -205,6 +219,7 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
     //  |
     //  B
     // where one of them knows how to fix this.
+    */
     await done
   }
 }
