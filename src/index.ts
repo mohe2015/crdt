@@ -66,12 +66,13 @@ class IndexedDBCmRDTFactory implements CmRDTFactory {
     return new Promise<IndexedDBCmRDT<T>>((resolve, reject) => {
       const request = indexedDB.open("cmrdt", 2)
       request.addEventListener("upgradeneeded", () => {
-        const objectStore = request.result.createObjectStore("log", {
-          autoIncrement: true,
+        request.result.createObjectStore("log", {
+          autoIncrement: false,
+          keyPath: "hash"
         });
-        objectStore.createIndex("hash", "hash", {
-          multiEntry: false,
-          unique: true
+        request.result.createObjectStore("heads", {
+          autoIncrement: false,
+          keyPath: ""
         })
       });
       request.addEventListener("error", () => {
@@ -130,19 +131,27 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
   // always store in topological order
 
   async insertEntry(entry: CmRDTLogEntry<T>): Promise<void> {
-    const [transaction, done] = this.getTransaction(["log"], "readwrite");
-    const objectStore = transaction.objectStore("log");
-    await this.handleRequest(objectStore.add(entry));
+    const [transaction, done] = this.getTransaction(["log", "heads"], "readwrite");
+    const logObjectStore = transaction.objectStore("log");
+    const headsObjectStore = transaction.objectStore("heads")
+
+    await this.handleRequest(logObjectStore.add(entry));
+    await this.handleRequest(headsObjectStore.add(entry.hash))
+    await Promise.all(entry.previousHashes.map(h => this.handleRequest(headsObjectStore.delete(h))))
     await done
   }
 
-  // index.openCursor(null, 'prev');
-  // collect elements (maybe as an iterator). store their previousHashes. if you got all previousHashes you found all heads?
-  async getHeads(): Promise<void> {
-    // TODO
+  async getHeads(): Promise<ArrayBuffer[]> {
+    const [transaction, done] = this.getTransaction(["heads"], "readonly");
+    const result = this.handleRequest(transaction.objectStore("heads").getAllKeys());
+    await done
+    return result as unknown as ArrayBuffer[]
   }
 
   async getEntriesBefore(heads: ArrayBuffer[]) {
+    // this means the recipient will get the nodes not in order!
+
+
     // TODO
   }
 }
@@ -235,7 +244,7 @@ async function test() {
   const server1Key = await generateKey();
   const user1Key = await generateKey();
 
-  const usersMapRoot = await createLogEntry(server1Key, null, []);
+  const usersMapRoot = await createLogEntry(server1Key, null, await cmrdt.getHeads());
 
   await cmrdt.insertEntry(usersMapRoot);
 
