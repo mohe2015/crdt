@@ -22,6 +22,9 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
+// https://github.com/orbitdb/ipfs-log
+// contains interesting things
+
 import stringify from 'fast-json-stable-stringify';
 import {
   exportPublicKey,
@@ -148,11 +151,27 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
     return result as unknown as ArrayBuffer[]
   }
 
-  async getEntriesBefore(heads: ArrayBuffer[]) {
+  async getEntriesBefore(remoteHeads: ArrayBuffer[]) {
+    const [transaction, done] = this.getTransaction(["log"], "readonly");
+    const logObjectStore = transaction.objectStore("log");
+    
+    // this implements binary search for finding common nodes, see below
+    const localHeads = await this.getHeads() // TODO optimize same transaction
+    for (const remoteHead of remoteHeads) {
+      const existsLocally = this.handleRequest(logObjectStore.getKey(remoteHeads)) !== undefined
+      if (existsLocally) {
+        // TODO send the ones after this one
+      }
+    }
+
+    // communication should've found out a subset of heads that none of both have
+    const headsTheOtherDoesntHave = [];
+
     // this means the recipient will get the nodes not in order!
     // TODO FIXME this likely breaks our heads calculation etc.
     // also these nodes should not be accessible until sync is done.
     // this is dangerous as the other end could send us complete garbage
+    // maybe still do this as there always is some way to break shit. But this is likely an easy way.
 
     // maybe do a different approach. for every of the entries that are not easily solvable (so neither of the clients have them) go back to the root and start sending the other end a random path back to it. the first entry that the other end does not have tells you what to send them.
     // also dont do this as this could lead to paths of several 1000s of lenght
@@ -175,6 +194,7 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
     //  |
     //  B
     // where one of them knows how to fix this.
+    await done
   }
 }
 
