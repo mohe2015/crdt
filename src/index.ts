@@ -155,6 +155,26 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
     // this is dangerous as the other end could send us complete garbage
 
     // maybe do a different approach. for every of the entries that are not easily solvable (so neither of the clients have them) go back to the root and start sending the other end a random path back to it. the first entry that the other end does not have tells you what to send them.
+    // also dont do this as this could lead to paths of several 1000s of lenght
+
+    // maybe some kind of binary search? (we could use an upper limit?)
+    
+    // best thing is probably allow backtracing about 5 nodes
+    // if that doesnt work use binary search?
+
+    // most times this issue doesn't happen which is:
+    //      .
+    //     / \
+    //    A   B
+    // so both don't know of the hash of the other.
+
+    // most common case is the following:
+    //  .
+    //  |
+    //  A
+    //  |
+    //  B
+    // where one of them knows how to fix this.
   }
 }
 
