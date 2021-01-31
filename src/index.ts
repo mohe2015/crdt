@@ -160,7 +160,6 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
 // likely major advantage of DAG is that causality can be proven
 // but only in one direction (you can still add entries to the past)
 // but not to the future
-// actually I don't think it's that big of an advantage
 
 // with DAG you can purposely not base your change on somebody else's e.g if you don't trust them
 
