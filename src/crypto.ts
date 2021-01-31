@@ -21,8 +21,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-
-import { webcrypto as crypto } from 'crypto';
+import { crypto } from './webcrypto';
 
 export async function generateKey(): Promise<CryptoKeyPair> {
   return await crypto.subtle.generateKey(

@@ -29,7 +29,7 @@ import {
   hashArrayBuffer,
   sign,
 } from './crypto.js';
-import { webcrypto as crypto } from 'crypto';
+import { crypto } from './webcrypto';
 
 // TODO use https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist
 
