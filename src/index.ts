@@ -152,6 +152,13 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
   }
 
   async getEntriesBefore(remoteHeads: ArrayBuffer[]) {
+    // maybe sync the topological sort somehow
+
+    // also https://github.com/orbitdb/ipfs-log/blob/master/src/log.js
+
+    // TODO FIXME I don't like that this is that complicated
+    // maybe use vector clocks additionally / instead? lamport-clock
+
     const [transaction, done] = this.getTransaction(["log"], "readonly");
     const logObjectStore = transaction.objectStore("log");
     
