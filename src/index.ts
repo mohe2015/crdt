@@ -152,14 +152,18 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
   }
 
   async getEntriesBefore(remoteHeads: ArrayBuffer[]) {
-    // maybe sync the topological sort somehow
+    // this approach just sends unknown nodes backwards until you reach a known node
+    // this means you need to trust the peer to not send you garbage as it could've just generated a big graph of random nodes that it sends to you
+    // see below for some ideas to circumvent this but there wasn't any similarily efficient way.
+
+
 
     // also https://github.com/orbitdb/ipfs-log/blob/master/src/log.js
 
     // TODO FIXME I don't like that this is that complicated
     // maybe use vector clocks additionally / instead? lamport-clock
 
-    const [transaction, done] = this.getTransaction(["log"], "readonly");
+    /*const [transaction, done] = this.getTransaction(["log"], "readonly");
     const logObjectStore = transaction.objectStore("log");
     
     // this implements binary search for finding common nodes, see below
