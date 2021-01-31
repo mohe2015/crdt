@@ -150,9 +150,11 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
 
   async getEntriesBefore(heads: ArrayBuffer[]) {
     // this means the recipient will get the nodes not in order!
+    // TODO FIXME this likely breaks our heads calculation etc.
+    // also these nodes should not be accessible until sync is done.
+    // this is dangerous as the other end could send us complete garbage
 
-
-    // TODO
+    // maybe do a different approach. for every of the entries that are not easily solvable (so neither of the clients have them) go back to the root and start sending the other end a random path back to it. the first entry that the other end does not have tells you what to send them.
   }
 }
 
