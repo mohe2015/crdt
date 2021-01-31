@@ -64,11 +64,10 @@ class IndexedDBCmRDTFactory implements CmRDTFactory {
 
   initialize<T>() {
     return new Promise<IndexedDBCmRDT<T>>((resolve, reject) => {
-      const request = indexedDB.open("cmrdt", 1)
+      const request = indexedDB.open("cmrdt", 2)
       request.addEventListener("upgradeneeded", () => {
         const objectStore = request.result.createObjectStore("log", {
           autoIncrement: true,
-          keyPath: ""
         });
         objectStore.createIndex("hash", "hash", {
           multiEntry: false,
@@ -143,7 +142,7 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
     // TODO
   }
 
-  async getEntriesAfterHeads(heads: ArrayBuffer[]) {
+  async getEntriesBefore(heads: ArrayBuffer[]) {
     // TODO
   }
 }
@@ -231,10 +230,14 @@ async function logToState<S, T>(currentState: S, remainingLog: CmRDTLog<T>, addL
 // also contains password, etc. but this is only send between servers and admins
 
 async function test() {
+  const cmrdt = await (new IndexedDBCmRDTFactory()).initialize<{operation: string, value: ArrayBuffer}|null>();
+
   const server1Key = await generateKey();
   const user1Key = await generateKey();
 
   const usersMapRoot = await createLogEntry(server1Key, null, []);
+
+  await cmrdt.insertEntry(usersMapRoot);
 
   const createUser1Entry = await createLogEntry(
     server1Key,
