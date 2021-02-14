@@ -25,6 +25,8 @@
 // https://github.com/orbitdb/ipfs-log
 // contains interesting things
 
+// https://developer.mozilla.org/en-US/docs/Web/API/Broadcast_Channel_API
+
 import stringify from 'fast-json-stable-stringify';
 import {
   exportPublicKey,
