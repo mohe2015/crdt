@@ -61,8 +61,6 @@ interface CmRDTFactory {
 
 interface CmRDT<T> {
   insertEntry(entry: CmRDTLogEntry<T>): Promise<void>;
-
-
 }
 
 class IndexedDBCmRDTFactory implements CmRDTFactory {
@@ -167,7 +165,7 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
       const nextUnknownHash = unknownHashes.pop() // length > 0
       if (nextUnknownHash == undefined) break;
       if (this.handleRequest(logObjectStore.getKey(nextUnknownHash)) === undefined) {
-        // TODO request entry from remove
+        // TODO request entry from remote
 
         // TODO add that entry
         // TODO push it's previousHashes into unknownHashes
