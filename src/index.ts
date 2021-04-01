@@ -53,6 +53,10 @@ type CmRDTLogEntry<T> = Readonly<{
   signature: ArrayBuffer;
 }>;
 
+function cmrdtLogEntrySize<T>(entry: CmRDTLogEntry<T>): number {
+  return stringify(entry.value).length + entry.hash.byteLength + entry.random.byteLength + entry.previousHashes.map(a => a.byteLength).reduce((prev, curr) => prev + curr) + entry.author.byteLength + entry.signature.byteLength
+}
+
 type CmRDTLog<T> = Readonly<CmRDTLogEntry<T>[]>;
 
 interface CmRDTFactory {
@@ -61,6 +65,14 @@ interface CmRDTFactory {
 
 interface CmRDT<T> {
   insertEntry(entry: CmRDTLogEntry<T>): Promise<void>;
+}
+
+interface Remote<T> {
+  /**
+   * This also validates that the remote sent a valid object.
+   * @param key the key to request from the remote
+   */
+  requestEntry(key: ArrayBuffer): Promise<CmRDTLogEntry<T>>;
 }
 
 class IndexedDBCmRDTFactory implements CmRDTFactory {
@@ -131,16 +143,22 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
 
   // NEW DATABASE DESIGN
   // out of line auto-incrementing integer primary key | value | hash | previous | author | signature
-  // always store in topological order
+  // always store in topological order - this is hard with backwards insertion but would be benefical
 
   async insertEntry(entry: CmRDTLogEntry<T>): Promise<void> {
+    await this.insertEntries([entry]);
+  }
+
+  async insertEntries(entries: Array<CmRDTLogEntry<T>>): Promise<void> {
     const [transaction, done] = this.getTransaction(["log", "heads"], "readwrite");
     const logObjectStore = transaction.objectStore("log");
     const headsObjectStore = transaction.objectStore("heads")
 
-    await this.handleRequest(logObjectStore.add(entry));
-    await this.handleRequest(headsObjectStore.add(entry.hash))
-    await Promise.all(entry.previousHashes.map(h => this.handleRequest(headsObjectStore.delete(h))))
+    for (const entry of entries) {
+      await this.handleRequest(logObjectStore.add(entry));
+      await this.handleRequest(headsObjectStore.add(entry.hash))
+      await Promise.all(entry.previousHashes.map(h => this.handleRequest(headsObjectStore.delete(h))))
+    }
     await done
   }
 
@@ -151,24 +169,33 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
     return result as unknown as ArrayBuffer[]
   }
 
-  async getEntriesBefore(remoteHeads: ArrayBuffer[]) {
+  async getEntriesBefore(remoteHeads: ArrayBuffer[], remote: Remote<T>) {
     // this approach just sends unknown nodes backwards until you reach a known node
     // this means you need to trust the peer to not send you garbage as it could've just generated a big graph of random nodes that it sends to you
     // see below for some ideas to circumvent this but there wasn't any similarily efficient way.
+
+    // likely premature optimization but database otherwise would need to make hundreds of single transactions
+    let cache: Array<CmRDTLogEntry<T>> = new Array();
+    let cacheSize = 0
+    const CACHE_SIZE_LIMIT = 1_000_000; // 1 MB
 
     const [transaction, done] = this.getTransaction(["log"], "readonly");
     const logObjectStore = transaction.objectStore("log");
 
     // send your heads to the other peer. you will then find unknown hashes in their heads which you can request
-    const unknownHashes = remoteHeads
-    while (unknownHashes.length > 0) {
-      const nextUnknownHash = unknownHashes.pop() // length > 0
-      if (nextUnknownHash == undefined) break;
+    const potentiallyUnknownHashes = remoteHeads // TODO FIXME an attacker could send large amounts of this
+    while (potentiallyUnknownHashes.length > 0) {
+      const nextUnknownHash = potentiallyUnknownHashes.pop()! // length > 0
       if (this.handleRequest(logObjectStore.getKey(nextUnknownHash)) === undefined) {
-        // TODO request entry from remote
-
-        // TODO add that entry
-        // TODO push it's previousHashes into unknownHashes
+        // TODO FIXME request multiple at once
+        let value: CmRDTLogEntry<T> = await remote.requestEntry(nextUnknownHash)
+        let size = cmrdtLogEntrySize(value)
+        if (cacheSize + size > CACHE_SIZE_LIMIT) {
+          this.insertEntries(cache);
+          cache = new Array();
+          cache.push(value)
+        }
+        potentiallyUnknownHashes.push(...value.previousHashes)
       }
     }
 
