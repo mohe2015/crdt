@@ -191,15 +191,14 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
     await done
     return result as unknown as Array<CmRDTLogEntry<any>>
   }
-
+ 
+  // TODO FIXME make this mostly usable from both sides
+  // remote needs to already be connected - maybe this should be initiated from a sync command?
   async syncWithRemote(remote: Remote<T>) {
-    remote.connect();
     // this approach just sends unknown nodes backwards until you reach a known node
     // this means you need to trust the peer to not send you garbage as it could've just generated a big graph of random nodes that it sends to you
     // see below for some ideas to circumvent this but there wasn't any similarily efficient way.
 
-    const [transaction, done] = this.getTransaction(["log"], "readonly");
-    const logObjectStore = transaction.objectStore("log");
 
     // send your heads to the other peer. you will then find unknown hashes in their heads which you can request
     let remoteHeadsRequest = remote.requestHeads();
@@ -213,21 +212,22 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
 
       remote.sendRequests()
 
+      // TODO FIXME combine all transactions that can be combined?
+      const [transaction, done] = this.getTransaction(["log"], "readonly");
+      const logObjectStore = transaction.objectStore("log");
       const unknownHashes = potentiallyUnknownHashes.filter(hash => this.handleRequest(logObjectStore.getKey(hash)) === undefined)
+      await done
 
-        let sendMissingEntriesRequest = remote.requestEntries(unknownHashes)
-        let sendMyEntriesToRemoteRequest = remote.sendEntries(await this.getEntries(missingHeadsForRemote))
+      let sendMissingEntriesRequest = remote.requestEntries(unknownHashes)
+      let sendMyEntriesToRemoteRequest = remote.sendEntries(await this.getEntries(missingHeadsForRemote))
 
-        const missingEntries = await sendMissingEntriesRequest
-        await sendMyEntriesToRemoteRequest
+      const missingEntries = await sendMissingEntriesRequest
+      await sendMyEntriesToRemoteRequest
 
-        await this.insertEntries(missingEntries)
-        potentiallyUnknownHashes = []
-        potentiallyUnknownHashes.push(...value.previousHashes)
-      }
+      await this.insertEntries(missingEntries)
+      potentiallyUnknownHashes = missingEntries.flatMap(entry => entry.previousHashes)
     }
 
-    await done
   }
 }
 
