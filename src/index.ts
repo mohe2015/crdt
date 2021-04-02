@@ -71,10 +71,9 @@ interface CmRDT<T> {
 interface Remote<T> {
   connect(): Promise<void>
 
-  sendRequests(): void
+  flushRequests(): void
 
-  // TODO FIXME combine with sendEntries
-  sendMyHeadsAndGetMissingHeadsFromRemote(heads: Array<ArrayBuffer>): Promise<Array<ArrayBuffer>>
+  sendHeads(heads: Array<ArrayBuffer>): Promise<void>
 
   requestHeads(): Promise<Array<ArrayBuffer>>
 
@@ -88,6 +87,8 @@ interface Remote<T> {
   // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
   // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
   requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>>; // TODO FIXME maybe streaming
+
+  requestMissingEntriesForRemote(): Promise<Array<ArrayBuffer>>
 }
 
 class IndexedDBCmRDTFactory implements CmRDTFactory {
@@ -199,19 +200,18 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
     // this means you need to trust the peer to not send you garbage as it could've just generated a big graph of random nodes that it sends to you
     // see below for some ideas to circumvent this but there wasn't any similarily efficient way.
 
-
     // send your heads to the other peer. you will then find unknown hashes in their heads which you can request
     let remoteHeadsRequest = remote.requestHeads();
-    remote.sendRequests();
+    let missingHeadsForRemoteRequest = remote.sendHeads(await this.getHeads()); // maybe split up request
+    let missingEntriesForRemoteRequest = remote.requestMissingEntriesForRemote()
+
+    remote.flushRequests();
 
     let potentiallyUnknownHashes = await remoteHeadsRequest // TODO FIXME an attacker could send large amounts of this
+    await missingHeadsForRemoteRequest
+    let missingEntriesForRemote = await missingEntriesForRemoteRequest;
+
     while (potentiallyUnknownHashes.length > 0) {
-      let missingHeadsForRemoteRequest = remote.sendMyHeadsAndGetMissingHeadsFromRemote(await this.getHeads()); // maybe split up request
-
-      const missingHeadsForRemote = await missingHeadsForRemoteRequest;
-
-      remote.sendRequests()
-
       // TODO FIXME combine all transactions that can be combined?
       const [transaction, done] = this.getTransaction(["log"], "readonly");
       const logObjectStore = transaction.objectStore("log");
@@ -219,15 +219,17 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
       await done
 
       let sendMissingEntriesRequest = remote.requestEntries(unknownHashes)
-      let sendMyEntriesToRemoteRequest = remote.sendEntries(await this.getEntries(missingHeadsForRemote))
+      let sendMyEntriesToRemoteRequest = remote.sendEntries(await this.getEntries(missingEntriesForRemote))
+      let missingEntriesForRemoteRequest = remote.requestMissingEntriesForRemote()
+      remote.flushRequests()
 
       const missingEntries = await sendMissingEntriesRequest
-      await sendMyEntriesToRemoteRequest
+      await sendMyEntriesToRemoteRequest;
+      missingEntriesForRemote = await missingEntriesForRemoteRequest
 
       await this.insertEntries(missingEntries)
       potentiallyUnknownHashes = missingEntries.flatMap(entry => entry.previousHashes)
     }
-
   }
 }
 
