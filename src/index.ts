@@ -35,6 +35,7 @@ import {
   sign,
 } from './crypto.js';
 import crypto from '@dev.mohe/isomorphic-webcrypto';
+import type { JSONRPCRequestWithResponse } from './json-rpc.js';
 
 // TODO use https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist
 
@@ -69,6 +70,12 @@ interface CmRDT<T> {
 
 interface Remote<T> {
   connect(): Promise<void>
+
+  sendMyHeads(heads: Array<ArrayBuffer>): Promise<void>
+
+  requestHeads(): Promise<Array<ArrayBuffer>>
+
+  sendRequests(): void
 
   /**
    * This also validates that the remote sent a valid object.
@@ -174,7 +181,7 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
     return result as unknown as ArrayBuffer[]
   }
 
-  async syncWithRemove(remote: Remote<T>) {
+  async syncWithRemote(remote: Remote<T>) {
     remote.connect();
     // this approach just sends unknown nodes backwards until you reach a known node
     // this means you need to trust the peer to not send you garbage as it could've just generated a big graph of random nodes that it sends to you
@@ -189,7 +196,12 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
     const logObjectStore = transaction.objectStore("log");
 
     // send your heads to the other peer. you will then find unknown hashes in their heads which you can request
-    const potentiallyUnknownHashes = remoteHeads // TODO FIXME an attacker could send large amounts of this
+    let request1 = remote.sendMyHeads(await this.getHeads());
+    let request2 = remote.requestHeads();
+    remote.sendRequests();
+
+    const potentiallyUnknownHashes = await request2 // TODO FIXME an attacker could send large amounts of this
+    await request1;
     while (potentiallyUnknownHashes.length > 0) {
       const nextUnknownHash = potentiallyUnknownHashes.pop()! // length > 0
       if (this.handleRequest(logObjectStore.getKey(nextUnknownHash)) === undefined) {
