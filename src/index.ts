@@ -71,11 +71,14 @@ interface CmRDT<T> {
 interface Remote<T> {
   connect(): Promise<void>
 
-  sendMyHeads(heads: Array<ArrayBuffer>): Promise<void>
+  sendRequests(): void
+
+  // TODO FIXME combine with sendEntries
+  sendMyHeadsAndGetMissingHeadsFromRemote(heads: Array<ArrayBuffer>): Promise<Array<ArrayBuffer>>
 
   requestHeads(): Promise<Array<ArrayBuffer>>
 
-  sendRequests(): void
+  sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void>
 
   /**
    * This also validates that the remote sent a valid object.
@@ -181,38 +184,45 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
     return result as unknown as ArrayBuffer[]
   }
 
+  async getEntries(entries: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<any>>> {
+    const [transaction, done] = this.getTransaction(["log"], "readonly");
+    const logObjectStore = transaction.objectStore("log");
+    const result = entries.map(hash => this.handleRequest(logObjectStore.get(hash)))
+    await done
+    return result as unknown as Array<CmRDTLogEntry<any>>
+  }
+
   async syncWithRemote(remote: Remote<T>) {
     remote.connect();
     // this approach just sends unknown nodes backwards until you reach a known node
     // this means you need to trust the peer to not send you garbage as it could've just generated a big graph of random nodes that it sends to you
     // see below for some ideas to circumvent this but there wasn't any similarily efficient way.
 
-    // likely premature optimization but database otherwise would need to make hundreds of single transactions
-    let cache: Array<CmRDTLogEntry<T>> = new Array();
-    let cacheSize = 0
-    const CACHE_SIZE_LIMIT = 1_000_000; // 1 MB
-
     const [transaction, done] = this.getTransaction(["log"], "readonly");
     const logObjectStore = transaction.objectStore("log");
 
     // send your heads to the other peer. you will then find unknown hashes in their heads which you can request
-    let request1 = remote.sendMyHeads(await this.getHeads());
-    let request2 = remote.requestHeads();
+    let remoteHeadsRequest = remote.requestHeads();
     remote.sendRequests();
 
-    const potentiallyUnknownHashes = await request2 // TODO FIXME an attacker could send large amounts of this
-    await request1;
+    let potentiallyUnknownHashes = await remoteHeadsRequest // TODO FIXME an attacker could send large amounts of this
     while (potentiallyUnknownHashes.length > 0) {
-      const nextUnknownHash = potentiallyUnknownHashes.pop()! // length > 0
-      if (this.handleRequest(logObjectStore.getKey(nextUnknownHash)) === undefined) {
-        // TODO FIXME request multiple at once, also provide missing ones for the other host at the same time for efficiency
-        let value: CmRDTLogEntry<T> = await remote.requestEntry(nextUnknownHash)
-        let size = cmrdtLogEntrySize(value)
-        if (cacheSize + size > CACHE_SIZE_LIMIT) {
-          this.insertEntries(cache);
-          cache = new Array();
-          cache.push(value)
-        }
+      let missingHeadsForRemoteRequest = remote.sendMyHeadsAndGetMissingHeadsFromRemote(await this.getHeads()); // maybe split up request
+
+      const missingHeadsForRemote = await missingHeadsForRemoteRequest;
+
+      remote.sendRequests()
+
+      const unknownHashes = potentiallyUnknownHashes.filter(hash => this.handleRequest(logObjectStore.getKey(hash)) === undefined)
+
+        let sendMissingEntriesRequest = remote.requestEntries(unknownHashes)
+        let sendMyEntriesToRemoteRequest = remote.sendEntries(await this.getEntries(missingHeadsForRemote))
+
+        const missingEntries = await sendMissingEntriesRequest
+        await sendMyEntriesToRemoteRequest
+
+        await this.insertEntries(missingEntries)
+        potentiallyUnknownHashes = []
         potentiallyUnknownHashes.push(...value.previousHashes)
       }
     }
