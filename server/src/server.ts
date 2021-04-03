@@ -37,10 +37,10 @@ async function main() {
     } else {
         let keyPair = await generateKey()
 
-        const exportedPrivKey = window.btoa(String.fromCharCode.apply(null, new Uint8Array(await exportPrivateKey(keyPair))));
+        const exportedPrivKey = window.btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(await exportPrivateKey(keyPair)))));
         key = `-----BEGIN PRIVATE KEY-----\n${exportedPrivKey}\n-----END PRIVATE KEY-----`;
 
-        const exportedPubKey = window.btoa(String.fromCharCode.apply(null, new Uint8Array(await exportPublicKey(keyPair))));
+        const exportedPubKey = window.btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(await exportPublicKey(keyPair)))));
         cert = `-----BEGIN PUBLIC KEY-----\n${exportedPubKey}\n-----END PUBLIC KEY-----`;
 
         writeFileSync("key.pem", exportedPrivKey)
