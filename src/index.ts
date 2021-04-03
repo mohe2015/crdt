@@ -22,9 +22,6 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-// https://github.com/orbitdb/ipfs-log
-// contains interesting things
-
 // https://developer.mozilla.org/en-US/docs/Web/API/Broadcast_Channel_API
 
 import stringify from 'fast-json-stable-stringify';
@@ -35,7 +32,6 @@ import {
   sign,
 } from './crypto.js';
 import crypto from '@dev.mohe/isomorphic-webcrypto';
-import type { JSONRPCRequestWithResponse } from './json-rpc.js';
 
 // TODO use https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist
 
@@ -198,6 +194,13 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
   // TODO FIXME make this mostly usable from both sides
   // remote needs to already be connected - maybe this should be initiated from a sync command?
   async syncWithRemote(remote: Remote<T>) {
+    // the part above this line does efficient-syncing which means only things are synced where one node knows
+    // everything it needs to send to get another node up to date. In most practical cases this should work.
+    // if both nodes did changes you normally need to fallback to "backwards-syncing". Maybe a heuristic with "fake-heads"
+    // could be implemented so if you add changes locally you also send the base because that is what most remotes likely know.
+    // --------------------------------------
+    // the part below this line does "backwards-syncing" which *should* work in all cases.
+    
     // this approach just sends unknown nodes backwards until you reach a known node
     // this means you need to trust the peer to not send you garbage as it could've just generated a big graph of random nodes that it sends to you
     // see below for some ideas to circumvent this but there wasn't any similarily efficient way.
