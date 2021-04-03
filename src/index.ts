@@ -181,22 +181,15 @@ class WebRTCRemote<T> extends Remote<T> {
       // TODO ice servers
     })
 
-    connection.onicecandidate = (event) => console.log({candidate: event.candidate}); // you need to send this to remote - maybe generate qr code?
+    connection.addEventListener("icecandidate", (event) => console.log(JSON.stringify({candidate: event.candidate}))); // you need to send this to remote - maybe generate qr code?
 
-    connection.onnegotiationneeded = async () => {
-      try {
-        // @ts-expect-error
-        await connection.setLocalDescription();
-        // send the offer to the other peer
-        console.log({description: connection.localDescription});
-      } catch (err) {
-        console.error(err);
-      }
-    }
+    connection.addEventListener("icecandidateerror", console.error)
 
-    document.querySelector<HTMLButtonElement>("#button")!.addEventListener("onclick", async (event) => {
+    document.querySelector<HTMLButtonElement>("#button")!.addEventListener("click", async (event) => {
+      console.log("click")
       let value = JSON.parse(document.querySelector<HTMLInputElement>("#input")!.value);
-
+      console.log(value)
+      
       try {
         if (value.description) {
           await connection.setRemoteDescription(value.description);
@@ -204,7 +197,7 @@ class WebRTCRemote<T> extends Remote<T> {
           if (value.description.type == 'offer') {
             // @ts-expect-error
             await connection.setLocalDescription();
-            console.log({description: connection.localDescription});
+            console.log(JSON.stringify({description: connection.localDescription}));
           }
         } else if (value.candidate) {
           await connection.addIceCandidate(value.candidate);
@@ -213,6 +206,10 @@ class WebRTCRemote<T> extends Remote<T> {
         console.error(err);
       }
     })
+
+    let response: RTCSessionDescriptionInit = await connection.createOffer({})
+    connection.setLocalDescription(response)
+    console.log(JSON.stringify({description: response}));
   }
 
   flushRequests(): Promise<void> {
