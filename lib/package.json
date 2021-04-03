@@ -1,11 +1,15 @@
 {
   "name": "@dev.mohe/crdt-lib",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "type": "module",
+  "module": "crypto.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Moritz Hedtke <Moritz.Hedtke@t-online.de>",
-  "license": "AGPL-3.0-or-later"
+  "license": "AGPL-3.0-or-later",
+  "dependencies": {
+    "@dev.mohe/isomorphic-webcrypto": "^1.0.0"
+  }
 }

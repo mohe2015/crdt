@@ -1,5 +1,5 @@
 {
-  "name": "server",
+  "name": "@dev.mohe/crdt-server",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -9,9 +9,11 @@
   "author": "Moritz Hedtke <Moritz.Hedtke@t-online.de>",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
+    "@dev.mohe/crdt-lib": "^0.0.1",
     "ws": "^7.4.4"
   },
   "devDependencies": {
-    "@types/ws": "^7.4.1"
+    "@types/ws": "^7.4.1",
+    "ts-node": "^9.1.1"
   }
 }

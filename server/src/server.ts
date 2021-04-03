@@ -22,18 +22,36 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { createServer } from 'https';
 import { Server } from 'ws';
+import { generateKey, exportPrivateKey, exportPublicKey } from '@dev.mohe/crdt-lib/src/crypto'
 
 // TODO check origin - return 403 if forbidden or not existent
 
 async function main() {
-    
+    let cert: string, key: string;
+    if (existsSync("cert.pem") && existsSync("key.pem")) {
+        cert = readFileSync("cert.pem").toString()
+        key = readFileSync("key.pem").toString()
+    } else {
+        let keyPair = await generateKey()
+
+        const exportedPrivKey = window.btoa(String.fromCharCode.apply(null, new Uint8Array(await exportPrivateKey(keyPair))));
+        key = `-----BEGIN PRIVATE KEY-----\n${exportedPrivKey}\n-----END PRIVATE KEY-----`;
+
+        const exportedPubKey = window.btoa(String.fromCharCode.apply(null, new Uint8Array(await exportPublicKey(keyPair))));
+        cert = `-----BEGIN PUBLIC KEY-----\n${exportedPubKey}\n-----END PUBLIC KEY-----`;
+
+        writeFileSync("key.pem", exportedPrivKey)
+        writeFileSync("cert.pem", exportedPubKey)
+
+        console.log("generated certificate")
+    }
 
     const server = createServer({
-        cert: readFileSync('/path/to/cert.pem'),
-        key: readFileSync('/path/to/key.pem')
+        cert,
+        key
     });
     const wss = new Server({ server });
 
