@@ -158,6 +158,72 @@ abstract class Remote<T> {
 
   abstract requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>>
 }
+// https://developer.mozilla.org/en-US/docs/Web/API
+// https://developer.mozilla.org/en-US/docs/Web/API/Barcode_Detection_API
+// https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
+// https://developer.mozilla.org/en-US/docs/Web/API/Broadcast_Channel_API
+
+class WebSocketRemote<T> extends Remote<T> {
+  async connect(): Promise<void> {
+    let socket = new WebSocket("wss://test.example.org", "test-protocol")
+    socket.binaryType = "blob" // vs arraybuffer
+
+    socket.addEventListener("message", (event) => {
+
+    })
+
+    socket.addEventListener("close", (event) => {
+
+    })
+
+    socket.addEventListener("error", (event) => {
+
+    })
+
+    socket.addEventListener("open", (event) => {
+
+    })
+
+    socket.close()
+
+    socket.send()
+  }
+
+  async flushRequests(): Promise<void> {
+
+  }
+
+  async sendHashes(heads: Array<ArrayBuffer>): Promise<void> {
+
+  }
+
+  async requestHeadHashes(): Promise<Set<ArrayBuffer>> {
+
+  }
+
+  async sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void> {
+
+  }
+
+  async requestPredecessors(hashes: Array<ArrayBuffer>, depth: number): Promise<Set<ArrayBuffer>> {
+
+  }
+
+  /**
+   * This also validates that the remote sent a valid object.
+   * @param keys the key to request from the remote
+   */
+  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API#concepts_and_usage
+  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
+  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
+  async requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>> {
+    
+  }
+
+  async requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>> {
+
+  }
+}
 
 class WebRTCRemote<T> extends Remote<T> {
   // TODO https://www.w3.org/TR/webrtc/#perfect-negotiation-example
