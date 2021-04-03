@@ -4,6 +4,8 @@ SPDX-FileCopyrightText: 2020 Moritz Hedtke <Moritz.Hedtke@t-online.de>
 SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
+Use chromium for testing as it has better async debugging support
+
 
 implement update application with some "smart contract" like functionality. so you can verify that the update doesn't violate some e.g. permission rules and only apply it if it doesn't.
 

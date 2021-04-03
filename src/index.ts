@@ -57,7 +57,7 @@ function cmrdtLogEntrySize<T>(entry: CmRDTLogEntry<T>): number {
 type CmRDTLog<T> = Readonly<CmRDTLogEntry<T>[]>;
 
 interface CmRDTFactory {
-  initialize<T>(): Promise<CmRDT<T>>;
+  initialize<T>(databaseName: string): Promise<CmRDT<T>>;
 }
 
 abstract class CmRDT<T> {
@@ -230,9 +230,9 @@ class IndexedDBCmRDTTransaction<T> extends CmRDTTransaction<T> {
 
 class IndexedDBCmRDTFactory implements CmRDTFactory {
 
-  initialize<T>() {
+  initialize<T>(databaseName: string) {
     return new Promise<IndexedDBCmRDT<T>>((resolve, reject) => {
-      const request = indexedDB.open("cmrdt", 2)
+      const request = indexedDB.open(databaseName, 2)
       request.addEventListener("upgradeneeded", () => {
         request.result.createObjectStore("log", {
           autoIncrement: false,
@@ -265,7 +265,7 @@ class IndexedDBCmRDT<T> extends CmRDT<T> {
     this.idbDatabase = idbDatabase;
   }
 
-  getTransaction(storeNames: string | Iterable<string>, mode?: IDBTransactionMode): [CmRDTTransaction<T>, Promise<void>] {
+  getTransaction(storeNames: Iterable<string>, mode?: IDBTransactionMode): [CmRDTTransaction<T>, Promise<void>] {
     const transaction = this.idbDatabase.transaction(storeNames, mode);
     const done = new Promise<void>((resolve, reject) => {
       transaction.addEventListener('abort', () => {
@@ -367,18 +367,20 @@ async function logToState<S, T>(currentState: S, remainingLog: CmRDTLog<T>, addL
 // also contains password, etc. but this is only send between servers and admins
 
 async function test() {
-  const cmrdt = await (new IndexedDBCmRDTFactory()).initialize<{operation: string, value: ArrayBuffer}|null>();
+  const cmrdt = await (new IndexedDBCmRDTFactory()).initialize<{operation: string, value: ArrayBuffer}|null>("a");
 
   const server1Key = await generateKey();
   const user1Key = await generateKey();
 
-  const [transaction, done] = cmrdt.getTransaction(["log", "heads"], "readwrite")
+  const [transaction1, done1] = cmrdt.getTransaction(["heads"], "readonly")
+  const heads = await transaction1.getHeads()
+  await done1
+  
+  const usersMapRoot = await createLogEntry(server1Key, null, heads);
 
-  const usersMapRoot = await createLogEntry(server1Key, null, await transaction.getHeads());
-
-  await transaction.insertEntries([usersMapRoot]); // this should not work because of the await before
-
-  await done
+  const [transaction2, done2] = cmrdt.getTransaction(["log", "heads"], "readwrite")
+  await transaction2.insertEntries([usersMapRoot]);
+  await done2
 
   const createUser1Entry = await createLogEntry(
     server1Key,
