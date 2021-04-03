@@ -35,19 +35,26 @@ async function main() {
         cert = readFileSync("cert.pem").toString()
         key = readFileSync("key.pem").toString()
     } else {
-        let keyPair = await generateKey()
+        /*let keyPair = await generateKey()
 
         const exportedPrivKey = Buffer.from(String.fromCharCode.apply(null, Array.from(new Uint8Array(await exportPrivateKey(keyPair))))).toString('base64');
-        key = `-----BEGIN PRIVATE KEY-----\n${exportedPrivKey}\n-----END PRIVATE KEY-----`;
+        key = `-----BEGIN RSA PRIVATE KEY-----\n${exportedPrivKey}\n-----END RSA PRIVATE KEY-----`;
 
         const exportedPubKey = Buffer.from(String.fromCharCode.apply(null, Array.from(new Uint8Array(await exportPublicKey(keyPair))))).toString('base64');
-        cert = `-----BEGIN PUBLIC KEY-----\n${exportedPubKey}\n-----END PUBLIC KEY-----`;
+        cert = `-----BEGIN CERTIFICATE-----\n${exportedPubKey}\n-----END CERTIFICATE-----`;
 
         writeFileSync("key.pem", key)
         writeFileSync("cert.pem", cert)
 
-        console.log("generated certificate")
+        console.log("generated certificate")*/
+
+        // openssl req -nodes -new -x509 -keyout key.pem -out cert.pem
+        console.log("missing cert.pem && key.pem")
+        return;
     }
+
+    console.log(cert)
+    console.log(key)
 
     const server = createServer({
         cert,
