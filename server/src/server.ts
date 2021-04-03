@@ -37,14 +37,14 @@ async function main() {
     } else {
         let keyPair = await generateKey()
 
-        const exportedPrivKey = window.btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(await exportPrivateKey(keyPair)))));
+        const exportedPrivKey = Buffer.from(String.fromCharCode.apply(null, Array.from(new Uint8Array(await exportPrivateKey(keyPair))))).toString('base64');
         key = `-----BEGIN PRIVATE KEY-----\n${exportedPrivKey}\n-----END PRIVATE KEY-----`;
 
-        const exportedPubKey = window.btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(await exportPublicKey(keyPair)))));
+        const exportedPubKey = Buffer.from(String.fromCharCode.apply(null, Array.from(new Uint8Array(await exportPublicKey(keyPair))))).toString('base64');
         cert = `-----BEGIN PUBLIC KEY-----\n${exportedPubKey}\n-----END PUBLIC KEY-----`;
 
-        writeFileSync("key.pem", exportedPrivKey)
-        writeFileSync("cert.pem", exportedPubKey)
+        writeFileSync("key.pem", key)
+        writeFileSync("cert.pem", cert)
 
         console.log("generated certificate")
     }
@@ -65,3 +65,5 @@ async function main() {
 
     server.listen(8080);
 }
+
+main()
