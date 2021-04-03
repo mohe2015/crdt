@@ -134,18 +134,18 @@ abstract class CmRDTTransaction<T> {
   abstract contains(hash: ArrayBuffer): Promise<boolean>
 }
 
-interface Remote<T> {
-  connect(): Promise<void>
+abstract class Remote<T> {
+  abstract connect(): Promise<void>
 
-  flushRequests(): void
+  abstract flushRequests(): Promise<void>
 
-  sendHashes(heads: Array<ArrayBuffer>): Promise<void>
+  abstract sendHashes(heads: Array<ArrayBuffer>): Promise<void>
 
-  requestHeadHashes(): Promise<Set<ArrayBuffer>>
+  abstract requestHeadHashes(): Promise<Set<ArrayBuffer>>
 
-  sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void>
+  abstract sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void>
 
-  requestPredecessors(hashes: Array<ArrayBuffer>, depth: number): Promise<Set<ArrayBuffer>>
+  abstract requestPredecessors(hashes: Array<ArrayBuffer>, depth: number): Promise<Set<ArrayBuffer>>
 
   /**
    * This also validates that the remote sent a valid object.
@@ -154,9 +154,50 @@ interface Remote<T> {
   // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API#concepts_and_usage
   // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
   // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
-  requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>>; // TODO FIXME maybe streaming
+  abstract requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>>; // TODO FIXME maybe streaming
 
-  requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>>
+  abstract requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>>
+}
+
+class WebRTCRemote<T> extends Remote<T> {
+  async connect(): Promise<void> {
+
+  }
+
+  flushRequests(): Promise<void> {
+
+  }
+
+  async sendHashes(heads: Array<ArrayBuffer>): Promise<void> {
+
+  }
+
+  async requestHeadHashes(): Promise<Set<ArrayBuffer>> {
+
+  }
+
+  async sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void> {
+
+  }
+
+  async requestPredecessors(hashes: Array<ArrayBuffer>, depth: number): Promise<Set<ArrayBuffer>> {
+    
+  }
+
+  /**
+   * This also validates that the remote sent a valid object.
+   * @param keys the key to request from the remote
+   */
+  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API#concepts_and_usage
+  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
+  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
+  async requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>> {
+
+  }
+
+  async requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>> {
+
+  }
 }
 
 class IndexedDBCmRDTTransaction<T> extends CmRDTTransaction<T> {
