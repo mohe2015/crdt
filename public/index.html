@@ -14,8 +14,6 @@ SPDX-License-Identifier: AGPL-3.0-or-later
     <title>Snowpack App</title>
   </head>
   <body>
-    <img id="img" src="/logo.svg" />
-    <canvas id="canvas"></canvas>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <script type="module" src="/_dist_/index.js"></script>
     <!--
@@ -28,5 +26,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
       To begin the development, run `npm start` or `yarn start`.
       To create a production bundle, use `npm run build` or `yarn build`.
     -->
+
+    <form>
+      <input type="text" id="input">
+      <input type="button" id="button" value="Submit">
+    </form>
   </body>
 </html>

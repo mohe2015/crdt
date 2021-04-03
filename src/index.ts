@@ -160,8 +160,59 @@ abstract class Remote<T> {
 }
 
 class WebRTCRemote<T> extends Remote<T> {
-  async connect(): Promise<void> {
+  // TODO https://www.w3.org/TR/webrtc/#perfect-negotiation-example
+  // initial bootstrap needs to be manual so we don't depend on a server (for now at least)
+  // as webrtc is quite complicated maybe provide alternative bootstrap using websockets (preferably with your own server)
 
+  async connect(): Promise<void> {
+    // https://www.w3.org/TR/webrtc/#simple-peer-to-peer-example
+    let certificate = await RTCPeerConnection.generateCertificate({
+      name: "RSASSA-PKCS1-v1_5",
+      // @ts-expect-error
+      modulusLength: 4096,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: "SHA-256"
+    })
+
+    // certificate.getFingerprints().map(f => f.value)
+
+    let connection: RTCPeerConnection = new RTCPeerConnection({
+      certificates: [certificate]
+      // TODO ice servers
+    })
+
+    connection.onicecandidate = (event) => console.log({candidate: event.candidate}); // you need to send this to remote - maybe generate qr code?
+
+    connection.onnegotiationneeded = async () => {
+      try {
+        // @ts-expect-error
+        await connection.setLocalDescription();
+        // send the offer to the other peer
+        console.log({description: connection.localDescription});
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    document.querySelector<HTMLButtonElement>("#button")!.addEventListener("onclick", async (event) => {
+      let value = JSON.parse(document.querySelector<HTMLInputElement>("#input")!.value);
+
+      try {
+        if (value.description) {
+          await connection.setRemoteDescription(value.description);
+          // if we got an offer, we need to reply with an answer
+          if (value.description.type == 'offer') {
+            // @ts-expect-error
+            await connection.setLocalDescription();
+            console.log({description: connection.localDescription});
+          }
+        } else if (value.candidate) {
+          await connection.addIceCandidate(value.candidate);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    })
   }
 
   flushRequests(): Promise<void> {
@@ -408,6 +459,9 @@ async function logToState<S, T>(currentState: S, remainingLog: CmRDTLog<T>, addL
 // also contains password, etc. but this is only send between servers and admins
 
 async function test() {
+  const remote = new WebRTCRemote<any>();
+  await remote.connect()
+
   const cmrdt = await (new IndexedDBCmRDTFactory()).initialize<{operation: string, value: ArrayBuffer}|null>("a");
 
   const server1Key = await generateKey();
