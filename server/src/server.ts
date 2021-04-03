@@ -24,8 +24,8 @@
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { createServer } from 'https';
-import { Server } from 'ws';
-import { generateKey, exportPrivateKey, exportPublicKey } from '@dev.mohe/crdt-lib/src/crypto'
+import WebSocket from 'ws';
+import { generateKey, exportPrivateKey, exportPublicKey } from '@dev.mohe/crdt-lib'
 
 // TODO check origin - return 403 if forbidden or not existent
 
@@ -53,7 +53,7 @@ async function main() {
         cert,
         key
     });
-    const wss = new Server({ server });
+    const wss = new WebSocket.Server({ server });
 
     wss.on('connection', (ws, req) => {
         const ip = req.socket.remoteAddress;

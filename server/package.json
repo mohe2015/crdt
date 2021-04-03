@@ -2,9 +2,10 @@
   "name": "@dev.mohe/crdt-server",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "type": "module",
+  "module": "./src/server.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node --loader ts-node/esm ./src/server.ts"
   },
   "author": "Moritz Hedtke <Moritz.Hedtke@t-online.de>",
   "license": "AGPL-3.0-or-later",
