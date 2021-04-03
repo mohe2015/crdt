@@ -73,11 +73,13 @@ interface Remote<T> {
 
   flushRequests(): void
 
-  sendHeads(heads: Array<ArrayBuffer>): Promise<void>
+  sendHashes(heads: Array<ArrayBuffer>): Promise<void>
 
-  requestHeads(): Promise<Array<ArrayBuffer>>
+  requestHeadHashes(): Promise<Set<ArrayBuffer>>
 
   sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void>
+
+  requestPredecessors(hashes: Array<ArrayBuffer>, depth: number): Promise<Set<ArrayBuffer>>
 
   /**
    * This also validates that the remote sent a valid object.
@@ -88,7 +90,7 @@ interface Remote<T> {
   // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
   requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>>; // TODO FIXME maybe streaming
 
-  requestMissingEntriesForRemote(): Promise<Array<ArrayBuffer>>
+  requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>>
 }
 
 class IndexedDBCmRDTFactory implements CmRDTFactory {
@@ -185,10 +187,10 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
     return result as unknown as ArrayBuffer[]
   }
 
-  async getEntries(entries: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<any>>> {
+  async getEntries(entries: Set<ArrayBuffer>): Promise<Array<CmRDTLogEntry<any>>> {
     const [transaction, done] = this.getTransaction(["log"], "readonly");
     const logObjectStore = transaction.objectStore("log");
-    const result = entries.map(hash => this.handleRequest(logObjectStore.get(hash)))
+    const result = [...entries].map(hash => this.handleRequest(logObjectStore.get(hash)))
     await done
     return result as unknown as Array<CmRDTLogEntry<any>>
   }
@@ -201,34 +203,37 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
     // see below for some ideas to circumvent this but there wasn't any similarily efficient way.
 
     // send your heads to the other peer. you will then find unknown hashes in their heads which you can request
-    let remoteHeadsRequest = remote.requestHeads();
-    let missingHeadsForRemoteRequest = remote.sendHeads(await this.getHeads()); // maybe split up request
-    let missingEntriesForRemoteRequest = remote.requestMissingEntriesForRemote()
+    let remoteHeadHashesRequest = remote.requestHeadHashes();
+    let missingHeadsForRemoteRequest = remote.sendHashes(await this.getHeads()); // maybe split up request
+    let missingEntryHashesForRemoteRequest = remote.requestMissingEntryHashesForRemote()
 
     remote.flushRequests();
 
-    let potentiallyUnknownHashes = await remoteHeadsRequest // TODO FIXME an attacker could send large amounts of this
-    await missingHeadsForRemoteRequest
-    let missingEntriesForRemote = await missingEntriesForRemoteRequest;
+    let potentiallyUnknownHashes: Set<ArrayBuffer> = await remoteHeadHashesRequest; // TODO FIXME an attacker could send large amounts of this, TODO FIXME also send n of their predecessors for efficiency
+    await missingHeadsForRemoteRequest;
+    let missingEntriesForRemote = await missingEntryHashesForRemoteRequest;
 
-    while (potentiallyUnknownHashes.length > 0) {
+    while (potentiallyUnknownHashes.size > 0) {
       // TODO FIXME combine all transactions that can be combined?
       const [transaction, done] = this.getTransaction(["log"], "readonly");
       const logObjectStore = transaction.objectStore("log");
-      const unknownHashes = potentiallyUnknownHashes.filter(hash => this.handleRequest(logObjectStore.getKey(hash)) === undefined)
+      const unknownHashes = [...potentiallyUnknownHashes].filter(hash => this.handleRequest(logObjectStore.getKey(hash)) === undefined)
       await done
 
       let sendMissingEntriesRequest = remote.requestEntries(unknownHashes)
       let sendMyEntriesToRemoteRequest = remote.sendEntries(await this.getEntries(missingEntriesForRemote))
-      let missingEntriesForRemoteRequest = remote.requestMissingEntriesForRemote()
+      let missingEntriesForRemoteRequest = remote.requestMissingEntryHashesForRemote()
+      let predecessorsForMissingEntriesRequest = remote.requestPredecessors(unknownHashes, 3);
       remote.flushRequests()
 
       const missingEntries = await sendMissingEntriesRequest
       await sendMyEntriesToRemoteRequest;
       missingEntriesForRemote = await missingEntriesForRemoteRequest
+      let predecessors = await predecessorsForMissingEntriesRequest
 
       await this.insertEntries(missingEntries)
-      potentiallyUnknownHashes = missingEntries.flatMap(entry => entry.previousHashes)
+
+      potentiallyUnknownHashes = new Set([...missingEntries.flatMap(entry => entry.previousHashes), ...predecessors])
     }
   }
 }
