@@ -60,8 +60,78 @@ interface CmRDTFactory {
   initialize<T>(): Promise<CmRDT<T>>;
 }
 
-interface CmRDT<T> {
-  insertEntry(entry: CmRDTLogEntry<T>): Promise<void>;
+abstract class CmRDT<T> {
+  abstract getTransaction(storeNames: string | Iterable<string>, mode?: IDBTransactionMode): [CmRDTTransaction<T>, Promise<void>];
+
+  // TODO FIXME make this mostly usable from both sides
+  // remote needs to already be connected - maybe this should be initiated from a sync command?
+  async syncWithRemote(remote: Remote<T>): Promise<void> {
+    // TODO FIXME actually implement this :D
+
+    // the part above this line does efficient-syncing which means only things are synced where one node knows
+    // everything it needs to send to get another node up to date. In most practical cases this should work.
+    // if both nodes did changes you normally need to fallback to "backwards-syncing". Maybe a heuristic with "fake-heads"
+    // could be implemented so if you add changes locally you also send the base because that is what most remotes likely know.
+    // --------------------------------------
+    // the part below this line does "backwards-syncing" which *should* work in all cases.
+    
+    // this approach just sends unknown nodes backwards until you reach a known node
+    // this means you need to trust the peer to not send you garbage as it could've just generated a big graph of random nodes that it sends to you
+    // see below for some ideas to circumvent this but there wasn't any similarily efficient way.
+
+    // send your heads to the other peer. you will then find unknown hashes in their heads which you can request
+    let remoteHeadHashesRequest = remote.requestHeadHashes();
+    let [transaction1, done1] = this.getTransaction(["heads"], "readonly")
+    let missingHeadsForRemoteRequest = remote.sendHashes(await transaction1.getHeads()); // maybe split up request
+    let missingEntryHashesForRemoteRequest = remote.requestMissingEntryHashesForRemote()
+    await done1
+
+    remote.flushRequests();
+
+    let potentiallyUnknownHashes: Set<ArrayBuffer> = await remoteHeadHashesRequest; // TODO FIXME an attacker could send large amounts of this, TODO FIXME also send n of their predecessors for efficiency
+    await missingHeadsForRemoteRequest;
+    let missingEntriesForRemote = await missingEntryHashesForRemoteRequest;
+
+    let [transaction2, done2] = this.getTransaction(["log"], "readonly")
+    let unknownHashes = [...potentiallyUnknownHashes].filter(transaction2.contains)
+    let missingEntries: Array<CmRDTLogEntry<T>> = []
+    let predecessors: Set<ArrayBuffer> = new Set()
+    await done2
+
+    while (potentiallyUnknownHashes.size > 0) {
+      // TODO FIXME combine all transactions that can be combined?
+      let [transaction, done] = this.getTransaction(["log"], "readonly")
+
+      await transaction.insertEntries(missingEntries)
+
+      potentiallyUnknownHashes = new Set([...missingEntries.flatMap(entry => entry.previousHashes), ...predecessors])
+
+      unknownHashes = [...potentiallyUnknownHashes].filter(transaction.contains)
+      await done
+
+      let sendMissingEntriesRequest = remote.requestEntries(unknownHashes)
+      let sendMyEntriesToRemoteRequest = remote.sendEntries(await transaction.getEntries(missingEntriesForRemote))
+      let missingEntriesForRemoteRequest = remote.requestMissingEntryHashesForRemote()
+      let predecessorsForMissingEntriesRequest = remote.requestPredecessors(unknownHashes, 3);
+      remote.flushRequests()
+
+      missingEntries = await sendMissingEntriesRequest
+      await sendMyEntriesToRemoteRequest;
+      missingEntriesForRemote = await missingEntriesForRemoteRequest
+      predecessors = await predecessorsForMissingEntriesRequest // TODO FIXME use
+    }
+  }
+}
+
+abstract class CmRDTTransaction<T> {
+
+  abstract getEntries(entries: Set<ArrayBuffer>): Promise<Array<CmRDTLogEntry<any>>>;
+
+  abstract getHeads(): Promise<ArrayBuffer[]>;
+
+  abstract insertEntries(entries: Array<CmRDTLogEntry<T>>): Promise<void>;
+
+  abstract contains(hash: ArrayBuffer): Promise<boolean>
 }
 
 interface Remote<T> {
@@ -87,6 +157,75 @@ interface Remote<T> {
   requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>>; // TODO FIXME maybe streaming
 
   requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>>
+}
+
+class IndexedDBCmRDTTransaction<T> extends CmRDTTransaction<T> {
+  transaction: IDBTransaction
+
+  constructor(transaction: IDBTransaction) {
+    super()
+    this.transaction = transaction
+  }
+
+  handleRequest<T>(request: IDBRequest<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      request.addEventListener('error', (event) => {
+        event.stopPropagation() // as the name implies this prevents propagation
+        reject(request.error)
+      })
+      request.addEventListener('success', () => {
+        resolve(request.result)
+      })
+    })
+  }
+
+  // NEW DATABASE DESIGN
+  // out of line auto-incrementing integer primary key | value | hash | previous | author | signature
+  // always store in topological order - this is hard with backwards insertion but would be benefical
+
+  /**
+   * @requires transaction be readwrite and accessing log and heads
+   * @param entries 
+   */
+  async insertEntries(entries: Array<CmRDTLogEntry<T>>): Promise<void> {
+    const logObjectStore = this.transaction.objectStore("log");
+    const headsObjectStore = this.transaction.objectStore("heads")
+
+    for (const entry of entries) {
+      await this.handleRequest(logObjectStore.add(entry));
+      await this.handleRequest(headsObjectStore.add(entry.hash))
+      await Promise.all(entry.previousHashes.map(h => this.handleRequest(headsObjectStore.delete(h))))
+    }
+  }
+
+  /**
+   * @requires transaction be readonly and accessing heads
+   * @returns 
+   */
+  async getHeads(): Promise<ArrayBuffer[]> {
+    const result = this.handleRequest(this.transaction.objectStore("heads").getAllKeys());
+    return result as unknown as ArrayBuffer[]
+  }
+
+  /**
+   * @requires transaction be readonly and accessing log
+   * @param entries 
+   * @returns 
+   */
+  async getEntries(entries: Set<ArrayBuffer>): Promise<Array<CmRDTLogEntry<any>>> {
+    const logObjectStore = this.transaction.objectStore("log");
+    const result = [...entries].map(hash => this.handleRequest(logObjectStore.get(hash)))
+    return result as unknown as Array<CmRDTLogEntry<any>>
+  }
+
+  /**
+   * @requires transaction be readonly and accessing log
+   * @param hash 
+   * @returns 
+   */
+  async contains(hash: ArrayBuffer): Promise<boolean> {
+    return (await this.handleRequest(this.transaction.objectStore("log").getKey(hash))) === undefined
+  }
 }
 
 class IndexedDBCmRDTFactory implements CmRDTFactory {
@@ -118,26 +257,15 @@ class IndexedDBCmRDTFactory implements CmRDTFactory {
   }
 }
 
-class IndexedDBCmRDT<T> implements CmRDT<T> {
+class IndexedDBCmRDT<T> extends CmRDT<T> {
   idbDatabase: IDBDatabase;
 
   constructor(idbDatabase: IDBDatabase) {
+    super()
     this.idbDatabase = idbDatabase;
   }
 
-  handleRequest<T>(request: IDBRequest<T>): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      request.addEventListener('error', (event) => {
-        event.stopPropagation() // as the name implies this prevents propagation
-        reject(request.error)
-      })
-      request.addEventListener('success', () => {
-        resolve(request.result)
-      })
-    })
-  }
-
-  getTransaction(storeNames: string | Iterable<string>, mode?: IDBTransactionMode): [IDBTransaction, Promise<void>] {
+  getTransaction(storeNames: string | Iterable<string>, mode?: IDBTransactionMode): [CmRDTTransaction<T>, Promise<void>] {
     const transaction = this.idbDatabase.transaction(storeNames, mode);
     const done = new Promise<void>((resolve, reject) => {
       transaction.addEventListener('abort', () => {
@@ -152,92 +280,7 @@ class IndexedDBCmRDT<T> implements CmRDT<T> {
         reject(transaction.error)
       })
     })
-    return [transaction, done]
-  }
-
-  // NEW DATABASE DESIGN
-  // out of line auto-incrementing integer primary key | value | hash | previous | author | signature
-  // always store in topological order - this is hard with backwards insertion but would be benefical
-
-  async insertEntry(entry: CmRDTLogEntry<T>): Promise<void> {
-    await this.insertEntries([entry]);
-  }
-
-  async insertEntries(entries: Array<CmRDTLogEntry<T>>): Promise<void> {
-    const [transaction, done] = this.getTransaction(["log", "heads"], "readwrite");
-    const logObjectStore = transaction.objectStore("log");
-    const headsObjectStore = transaction.objectStore("heads")
-
-    for (const entry of entries) {
-      await this.handleRequest(logObjectStore.add(entry));
-      await this.handleRequest(headsObjectStore.add(entry.hash))
-      await Promise.all(entry.previousHashes.map(h => this.handleRequest(headsObjectStore.delete(h))))
-    }
-    await done
-  }
-
-  async getHeads(): Promise<ArrayBuffer[]> {
-    const [transaction, done] = this.getTransaction(["heads"], "readonly");
-    const result = this.handleRequest(transaction.objectStore("heads").getAllKeys());
-    await done
-    return result as unknown as ArrayBuffer[]
-  }
-
-  async getEntries(entries: Set<ArrayBuffer>): Promise<Array<CmRDTLogEntry<any>>> {
-    const [transaction, done] = this.getTransaction(["log"], "readonly");
-    const logObjectStore = transaction.objectStore("log");
-    const result = [...entries].map(hash => this.handleRequest(logObjectStore.get(hash)))
-    await done
-    return result as unknown as Array<CmRDTLogEntry<any>>
-  }
- 
-  // TODO FIXME make this mostly usable from both sides
-  // remote needs to already be connected - maybe this should be initiated from a sync command?
-  async syncWithRemote(remote: Remote<T>) {
-    // the part above this line does efficient-syncing which means only things are synced where one node knows
-    // everything it needs to send to get another node up to date. In most practical cases this should work.
-    // if both nodes did changes you normally need to fallback to "backwards-syncing". Maybe a heuristic with "fake-heads"
-    // could be implemented so if you add changes locally you also send the base because that is what most remotes likely know.
-    // --------------------------------------
-    // the part below this line does "backwards-syncing" which *should* work in all cases.
-    
-    // this approach just sends unknown nodes backwards until you reach a known node
-    // this means you need to trust the peer to not send you garbage as it could've just generated a big graph of random nodes that it sends to you
-    // see below for some ideas to circumvent this but there wasn't any similarily efficient way.
-
-    // send your heads to the other peer. you will then find unknown hashes in their heads which you can request
-    let remoteHeadHashesRequest = remote.requestHeadHashes();
-    let missingHeadsForRemoteRequest = remote.sendHashes(await this.getHeads()); // maybe split up request
-    let missingEntryHashesForRemoteRequest = remote.requestMissingEntryHashesForRemote()
-
-    remote.flushRequests();
-
-    let potentiallyUnknownHashes: Set<ArrayBuffer> = await remoteHeadHashesRequest; // TODO FIXME an attacker could send large amounts of this, TODO FIXME also send n of their predecessors for efficiency
-    await missingHeadsForRemoteRequest;
-    let missingEntriesForRemote = await missingEntryHashesForRemoteRequest;
-
-    while (potentiallyUnknownHashes.size > 0) {
-      // TODO FIXME combine all transactions that can be combined?
-      const [transaction, done] = this.getTransaction(["log"], "readonly");
-      const logObjectStore = transaction.objectStore("log");
-      const unknownHashes = [...potentiallyUnknownHashes].filter(hash => this.handleRequest(logObjectStore.getKey(hash)) === undefined)
-      await done
-
-      let sendMissingEntriesRequest = remote.requestEntries(unknownHashes)
-      let sendMyEntriesToRemoteRequest = remote.sendEntries(await this.getEntries(missingEntriesForRemote))
-      let missingEntriesForRemoteRequest = remote.requestMissingEntryHashesForRemote()
-      let predecessorsForMissingEntriesRequest = remote.requestPredecessors(unknownHashes, 3);
-      remote.flushRequests()
-
-      const missingEntries = await sendMissingEntriesRequest
-      await sendMyEntriesToRemoteRequest;
-      missingEntriesForRemote = await missingEntriesForRemoteRequest
-      let predecessors = await predecessorsForMissingEntriesRequest
-
-      await this.insertEntries(missingEntries)
-
-      potentiallyUnknownHashes = new Set([...missingEntries.flatMap(entry => entry.previousHashes), ...predecessors])
-    }
+    return [new IndexedDBCmRDTTransaction<T>(transaction), done]
   }
 }
 
@@ -329,9 +372,13 @@ async function test() {
   const server1Key = await generateKey();
   const user1Key = await generateKey();
 
-  const usersMapRoot = await createLogEntry(server1Key, null, await cmrdt.getHeads());
+  const [transaction, done] = cmrdt.getTransaction(["log", "heads"], "readwrite")
 
-  await cmrdt.insertEntry(usersMapRoot);
+  const usersMapRoot = await createLogEntry(server1Key, null, await transaction.getHeads());
+
+  await transaction.insertEntries([usersMapRoot]); // this should not work because of the await before
+
+  await done
 
   const createUser1Entry = await createLogEntry(
     server1Key,
