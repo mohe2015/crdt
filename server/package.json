@@ -10,5 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "ws": "^7.4.4"
+  },
+  "devDependencies": {
+    "@types/ws": "^7.4.1"
   }
 }
