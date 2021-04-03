@@ -1,5 +1,5 @@
 {
-  "name": "server",
+  "name": "@dev.mohe/crdt-lib",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -7,11 +7,5 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Moritz Hedtke <Moritz.Hedtke@t-online.de>",
-  "license": "AGPL-3.0-or-later",
-  "dependencies": {
-    "ws": "^7.4.4"
-  },
-  "devDependencies": {
-    "@types/ws": "^7.4.1"
-  }
+  "license": "AGPL-3.0-or-later"
 }

@@ -22,28 +22,3 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { readFileSync } from 'fs';
-import { createServer } from 'https';
-import { Server } from 'ws';
-
-// TODO check origin - return 403 if forbidden or not existent
-
-async function main() {
-    
-
-    const server = createServer({
-        cert: readFileSync('/path/to/cert.pem'),
-        key: readFileSync('/path/to/key.pem')
-    });
-    const wss = new Server({ server });
-
-    wss.on('connection', (ws, req) => {
-        const ip = req.socket.remoteAddress;
-        ws.on('message', (message) => {
-            console.log('received: %s', message);
-        });
-        ws.send('something');
-    });
-
-    server.listen(8080);
-}
