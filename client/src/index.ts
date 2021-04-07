@@ -32,6 +32,7 @@ import {
   sign,
 } from '@dev.mohe/crdt-lib';
 import crypto from '@dev.mohe/isomorphic-webcrypto';
+import type { JSONRPCHandler, JSONRPCRequest, JSONRPCResponse } from './json-rpc';
 
 // TODO use https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist
 
@@ -163,39 +164,105 @@ abstract class Remote<T> {
 // https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
 // https://developer.mozilla.org/en-US/docs/Web/API/Broadcast_Channel_API
 
+
+
 class WebSocketRemote<T> extends Remote<T> {
-  async connect(): Promise<void> {
-    let socket = new WebSocket("wss://localhost:8080")
-    socket.binaryType = "blob" // vs arraybuffer
+  socket!: WebSocket
+  methods: Map<string, () => Promise<void>>
 
-    socket.addEventListener("message", (event) => {
-      console.log(event)
+  constructor() {
+    super()
+    this.methods = new Map()
+    this.methods.set()
+  }
+
+  connect(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.socket = new WebSocket("wss://localhost:8888")
+      //socket.binaryType = "blob" // vs arraybuffer
+  
+      this.socket.addEventListener("error", (event) => {
+        console.error(event)
+        reject()
+      })
+  
+      this.socket.addEventListener("open", (event) => {
+        console.log(event)
+        resolve()
+      })
     })
+  }
 
-    socket.addEventListener("close", (event) => {
-      console.log(event)
-    })
+  // this is running in the background
+  handleRequests(): void {
+    this.socket.addEventListener("message", (event) => {
+      // TODO FIXME put casting into conditional check, CHECK all parameters as this is remotely controlled data
+      let response = JSON.parse(event.data) as JSONRPCRequest<any>
 
-    socket.addEventListener("error", (event) => {
-      console.error(event)
-    })
-
-    socket.addEventListener("open", (event) => {
-      console.log(event)
-      socket.send("hi")
+      if (response.method) {
+        console.log("got method ")
+      }
     })
   }
 
   async flushRequests(): Promise<void> {
-
   }
 
   async sendHashes(heads: Array<ArrayBuffer>): Promise<void> {
 
   }
 
-  async requestHeadHashes(): Promise<Set<ArrayBuffer>> {
+  headHashes: JSONRPCHandler<void, Promise<Set<ArrayBuffer>>> = {
+    request: async (params) => {
+      let response = await this.genericRequestHandler<void, number[][], string>("headHashes", params)
+      if ('result' in response) {
+        return new Set(response.result.map(r => new Uint8Array(r).buffer))
+      } else {
+        throw new Error(response.error)
+      }
+    },
+    respond: () => {
+      let arrayBuffer = new ArrayBuffer(0)
+      return JSON.stringify(Array.from(new Uint8Array(arrayBuffer)))
+    }
+  }
 
+  genericRequestHandler<P, R, E>(name: string, params: P): Promise<JSONRPCResponse<R, E>> {
+    return new Promise((resolve, reject) => {
+      let id = crypto.getRandomValues(new Uint8Array(64)).reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
+      let request: JSONRPCRequest<P> = {
+        id,
+        method: name,
+        params
+      }
+      this.socket.send(JSON.stringify(request));
+
+      let onclose = (event: CloseEvent) => {
+        console.log(event)
+
+        this.socket.removeEventListener("message", onmessage)
+        this.socket.addEventListener("close", onclose)
+
+        reject()
+      }
+
+      let onmessage = (event: MessageEvent<string>) => {
+        console.log(event)
+
+        // TODO FIXME put parsing into conditional check
+        let response = JSON.parse(event.data) as JSONRPCResponse<R, E>
+        if (id === response.id) {
+          this.socket.removeEventListener("message", onmessage) // TODO test if this works
+          this.socket.addEventListener("close", onclose)
+
+          console.log(response)
+          resolve(response)
+        }
+      }
+
+      this.socket.addEventListener("message", onmessage)
+      this.socket.addEventListener("close", onclose)
+    })
   }
 
   async sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void> {
@@ -521,6 +588,7 @@ async function logToState<S, T>(currentState: S, remainingLog: CmRDTLog<T>, addL
 async function test() {
   const remote = new WebSocketRemote<any>();
   await remote.connect()
+  await remote.requestHeadHashes()
 
   const cmrdt = await (new IndexedDBCmRDTFactory()).initialize<{operation: string, value: ArrayBuffer}|null>("a");
 

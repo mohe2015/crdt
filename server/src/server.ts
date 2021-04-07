@@ -22,10 +22,10 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { createServer } from 'https';
+import { readFileSync, existsSync } from 'fs';
+import { createSecureServer } from 'http2';
 import WebSocket from 'ws';
-import { generateKey, exportPrivateKey, exportPublicKey } from '@dev.mohe/crdt-lib'
+import {  } from '@dev.mohe/crdt-lib'
 
 // TODO check origin - return 403 if forbidden or not existent
 
@@ -58,22 +58,32 @@ async function main() {
     console.log(cert)
     console.log(key)
 
-    const server = createServer({
+    const server = createSecureServer({
         cert,
         key,
-        
+        allowHTTP1: true,
+    }, (req, res) => {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({
+          httpVersion: req.httpVersion
+        }));
     });
+    // @ts-expect-error
     const wss = new WebSocket.Server({ server });
 
     wss.on('connection', (ws, req) => {
         const ip = req.socket.remoteAddress;
         ws.on('message', (message) => {
             console.log('received: %s', message);
+
+            let result = JSON.parse(message.toString())
+
+            console.log(result)
         });
         ws.send('something');
     });
 
-    server.listen(8080);
+    server.listen(8888);
 }
 
 main()
