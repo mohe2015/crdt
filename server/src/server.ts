@@ -29,6 +29,8 @@ import { generateKey, exportPrivateKey, exportPublicKey } from '@dev.mohe/crdt-l
 
 // TODO check origin - return 403 if forbidden or not existent
 
+// TODO https://nodejs.org/api/http2.html
+
 async function main() {
     let cert: string, key: string;
     if (existsSync("cert.pem") && existsSync("key.pem")) {
@@ -58,7 +60,8 @@ async function main() {
 
     const server = createServer({
         cert,
-        key
+        key,
+        
     });
     const wss = new WebSocket.Server({ server });
 

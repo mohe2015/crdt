@@ -165,28 +165,25 @@ abstract class Remote<T> {
 
 class WebSocketRemote<T> extends Remote<T> {
   async connect(): Promise<void> {
-    let socket = new WebSocket("wss://test.example.org", "test-protocol")
+    let socket = new WebSocket("wss://localhost:8080")
     socket.binaryType = "blob" // vs arraybuffer
 
     socket.addEventListener("message", (event) => {
-
+      console.log(event)
     })
 
     socket.addEventListener("close", (event) => {
-
+      console.log(event)
     })
 
     socket.addEventListener("error", (event) => {
-
+      console.error(event)
     })
 
     socket.addEventListener("open", (event) => {
-
+      console.log(event)
+      socket.send("hi")
     })
-
-    socket.close()
-
-    socket.send()
   }
 
   async flushRequests(): Promise<void> {
@@ -522,7 +519,7 @@ async function logToState<S, T>(currentState: S, remainingLog: CmRDTLog<T>, addL
 // also contains password, etc. but this is only send between servers and admins
 
 async function test() {
-  const remote = new WebRTCRemote<any>();
+  const remote = new WebSocketRemote<any>();
   await remote.connect()
 
   const cmrdt = await (new IndexedDBCmRDTFactory()).initialize<{operation: string, value: ArrayBuffer}|null>("a");
