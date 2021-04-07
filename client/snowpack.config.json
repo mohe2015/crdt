@@ -1,4 +1,5 @@
 {
+  "workspaceRoot": "..",
   "mount": {
     "public": "/",
     "src": "/_dist_"

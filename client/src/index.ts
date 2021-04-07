@@ -30,7 +30,7 @@ import {
   generateKey,
   hashArrayBuffer,
   sign,
-} from '../../lib/src/crypto.js';
+} from '@dev.mohe/crdt-lib';
 import crypto from '@dev.mohe/isomorphic-webcrypto';
 
 // TODO use https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist

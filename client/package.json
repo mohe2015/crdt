@@ -26,6 +26,7 @@
         "typescript": "^4.2.3"
     },
     "dependencies": {
+        "@dev.mohe/crdt-lib": "^0.0.1",
         "@dev.mohe/isomorphic-webcrypto": "^1.0.0",
         "fast-json-stable-stringify": "^2.1.0"
     }
