@@ -1,5 +1,6 @@
 import type { CmRDTLogEntry } from "./index"
-import type { JSONRPCHandler, JSONRPCRequest, JSONRPCResponse } from "./json-rpc"
+import type { JSONRPCFailedResponse, JSONRPCHandler, JSONRPCRequest, JSONRPCResponse, JSONRPCSuccessfulResponse } from "./json-rpc"
+import type { Serializable } from "./serialization"
 
 export abstract class Remote<T> {
     abstract connect(): Promise<void>
@@ -60,7 +61,7 @@ export abstract class Remote<T> {
     handleRequests(): void {
       this.socket.addEventListener("message", async (event) => {
         // TODO FIXME put casting into conditional check, CHECK all parameters as this is remotely controlled data
-        let request = JSON.parse(event.data) as JSONRPCRequest<object>
+        let request = JSON.parse(event.data) as JSONRPCRequest<Serializable<any>>
   
         if (request.method) {
           console.log("got method ")
@@ -88,13 +89,13 @@ export abstract class Remote<T> {
 
     }
   
-    genericRequestHandler<P, R, E>(name: string, params: P): Promise<JSONRPCResponse<R, E>> {
+    genericRequestHandler<P extends Serializable<P>, R extends Serializable<R>, E extends Serializable<E>>(name: string, params: P): Promise<R> {
       return new Promise((resolve, reject) => {
         let id = crypto.getRandomValues(new Uint8Array(64)).reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
-        let request: JSONRPCRequest<P> = {
-          id,
+        let request: JSONRPCRequest<any> = {
+          id: id,
           method: name,
-          params // TODO FIXME parse
+          params: params.serialize()
         }
         this.socket.send(JSON.stringify(request));
   
@@ -111,7 +112,7 @@ export abstract class Remote<T> {
           console.log(event)
   
           // TODO FIXME put parsing into conditional check
-          let response = JSON.parse(event.data) as JSONRPCResponse<R, E>
+          let response = JSON.parse(event.data) as JSONRPCResponse<any, any>
           if (id === response.id) {
             this.socket.removeEventListener("message", onmessage) // TODO test if this works
             this.socket.addEventListener("close", onclose)
@@ -119,9 +120,9 @@ export abstract class Remote<T> {
             console.log(response)
 
             if ('result' in response) {
-                resolve(response)
+                resolve((response as JSONRPCSuccessfulResponse<R>).result.get())
             } else {
-                reject(new Error(response.error))
+                reject(new Error((response as JSONRPCFailedResponse<E>).error.get().toString()))
             }
           }
         }
