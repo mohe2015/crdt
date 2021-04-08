@@ -8,7 +8,7 @@ export abstract class Remote<T> {
   
     //abstract sendHashes(heads: Array<ArrayBuffer>): Promise<void>
   
-    abstract headHashes: JSONRPCHandler<void, Promise<Set<ArrayBuffer>>>
+    abstract headHashes: JSONRPCHandler<void, Set<ArrayBuffer>>
   
     //abstract sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void>
   
@@ -32,7 +32,7 @@ export abstract class Remote<T> {
   
   class WebSocketRemote<T> extends Remote<T> {
     socket!: WebSocket
-    methods: Map<string, JSONRPCHandler<any, any>>
+    methods: Map<string, JSONRPCHandler<object, object>>
   
     constructor() {
       super()
@@ -60,7 +60,7 @@ export abstract class Remote<T> {
     handleRequests(): void {
       this.socket.addEventListener("message", async (event) => {
         // TODO FIXME put casting into conditional check, CHECK all parameters as this is remotely controlled data
-        let request = JSON.parse(event.data) as JSONRPCRequest<any>
+        let request = JSON.parse(event.data) as JSONRPCRequest<object>
   
         if (request.method) {
           console.log("got method ")
@@ -73,18 +73,18 @@ export abstract class Remote<T> {
       })
     }
   
-    headHashes: JSONRPCHandler<void, Promise<Set<ArrayBuffer>>> = {
+    headHashes: JSONRPCHandler<void, Set<ArrayBuffer>> = {
       request: async (params) => {
         return await this.genericRequestHandler<void, Set<ArrayBuffer>, string>("headHashes", params)
       },
-      respond: () => {
-        return await this.genericResponseHandler<void, Set<ArrayBuffer>, string>("headHashes", () => {
+      respond: async () => {
+        return await (this.genericResponseHandler<void, Set<ArrayBuffer>>("headHashes", () => {
             return new Set([new ArrayBuffer(0)])
-        })
+        }))(undefined)
       }
     }
 
-    genericResponseHandler<I, O>(name: string, callback: I => O) {
+    genericResponseHandler<I, O>(name: string, callback: (i: I) => O): (i: object) => Promise<any> {
 
     }
   
@@ -94,7 +94,7 @@ export abstract class Remote<T> {
         let request: JSONRPCRequest<P> = {
           id,
           method: name,
-          params
+          params // TODO FIXME parse
         }
         this.socket.send(JSON.stringify(request));
   
