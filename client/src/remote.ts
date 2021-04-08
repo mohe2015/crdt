@@ -1,6 +1,6 @@
 import type { CmRDTLogEntry } from "./index"
 import type { JSONRPCFailedResponse, JSONRPCHandler, JSONRPCRequest, JSONRPCResponse, JSONRPCSuccessfulResponse } from "./json-rpc"
-import type { Serializable } from "./serialization"
+import type { Serializable, SetOfArrayBuffers, StringSerializer, Void } from "./serialization"
 
 export abstract class Remote<T> {
     abstract connect(): Promise<void>
@@ -76,12 +76,12 @@ export abstract class Remote<T> {
   
     headHashes: JSONRPCHandler<void, Set<ArrayBuffer>> = {
       request: async (params) => {
-        return await this.genericRequestHandler<void, Set<ArrayBuffer>, string>("headHashes", params)
+        return await this.genericRequestHandler<void, Void, Set<ArrayBuffer>, SetOfArrayBuffers, string, StringSerializer>("headHashes", params)
       },
       respond: async () => {
         return await (this.genericResponseHandler<void, Set<ArrayBuffer>>("headHashes", () => {
             return new Set([new ArrayBuffer(0)])
-        }))(undefined)
+        }))()
       }
     }
 
@@ -89,7 +89,7 @@ export abstract class Remote<T> {
 
     }
   
-    genericRequestHandler<P extends Serializable<P>, R extends Serializable<R>, E extends Serializable<E>>(name: string, params: P): Promise<R> {
+    genericRequestHandler<P, P_ extends Serializable<P>, R, R_ extends Serializable<R>, E, E_ extends Serializable<E>>(name: string, params: P): Promise<R> {
       return new Promise((resolve, reject) => {
         let id = crypto.getRandomValues(new Uint8Array(64)).reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
         let request: JSONRPCRequest<any> = {

@@ -29,43 +29,43 @@ export {}
 // https://www.jsonrpc.org/specification
 // not completely standards compliant, more minimal
 
-export type JSONRPCRequests<P extends Serializable<P>> = Array<JSONRPCRequest<P>>
+export type JSONRPCRequests<P, P_ extends Serializable<P>> = Array<JSONRPCRequest<P, P_>>
 
-export type JSONRPCRequest<P extends Serializable<P>> = {
+export type JSONRPCRequest<P, P_ extends Serializable<P>> = {
     method: string,
     params: P,
     id: string
 }
 
-export interface JSONRPCSuccessfulResponse<R extends Serializable<R>> {
+export interface JSONRPCSuccessfulResponse<R, R_ extends Serializable<R>> {
     id: string,
     result: R,
 } 
 
-export interface JSONRPCFailedResponse<E extends Serializable<E>> {
+export interface JSONRPCFailedResponse<E, E_ extends Serializable<E>> {
     id: string,
     error: E,
 }
 
-export interface JSONRPCError<D extends Serializable<D>> {
+export interface JSONRPCError<D, D_ extends Serializable<D>> {
     code: number,
     message: string,
     data: D
 }
 
 // dont use directly if possible
-export type JSONRPCResponse<R extends Serializable<R>, E extends Serializable<E>> = JSONRPCSuccessfulResponse<R> | JSONRPCFailedResponse<E>;
+export type JSONRPCResponse<R, R_ extends Serializable<R>, E, E_ extends Serializable<E>> = JSONRPCSuccessfulResponse<R, R_> | JSONRPCFailedResponse<E, E_>;
 
-export type JSONRPCResponses<R extends Serializable<R>, E extends Serializable<E>> = Array<JSONRPCResponses<R, E>>
+export type JSONRPCResponses<R, R_ extends Serializable<R>, E, E_ extends Serializable<E>> = Array<JSONRPCResponses<R, R_, E, E_>>
 
-export async function transmit<P extends Serializable<P>, R extends Serializable<R>, E extends Serializable<E>>(requests: JSONRPCRequests<P>): Promise<JSONRPCResponses<R, E>> {
+export async function transmit<P, P_ extends Serializable<P>, R, R_ extends Serializable<R>, E, E_ extends Serializable<E>>(requests: JSONRPCRequests<P, P_>): Promise<JSONRPCResponses<R, R_, E, E_>> {
     // TODO FIXME
     return null as any
 }
 
-export type JSONRPCRequestWithResponse<P extends Serializable<P>, R extends Serializable<R>, E extends Serializable<E>> = {
-    request: JSONRPCRequest<P>,
-    response: JSONRPCResponse<R, E>
+export type JSONRPCRequestWithResponse<P, P_ extends Serializable<P>, R, R_ extends Serializable<R>, E, E_ extends Serializable<E>> = {
+    request: JSONRPCRequest<P, P_>,
+    response: JSONRPCResponse<R, R_, E, E_>
 }
 
 export type JSONRPCHandler<I, O> = {
