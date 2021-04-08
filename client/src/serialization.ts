@@ -2,7 +2,7 @@
 export interface Serializable<T> {
     get(): T
     set(t: T): void
-    serialize(): any
+    serialize(): any // any could be replace by blob or so and we could make this work then quite easily
     deserialize(o: any): void
 }
   
