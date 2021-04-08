@@ -67,6 +67,6 @@ export type JSONRPCRequestWithResponse<P, R, E> = {
 }
 
 export type JSONRPCHandler<I, O> = {
-    request: (i: I) => O,
-    respond: (i: I) => string, // JSON
+    request: (i: I) => Promise<O>,
+    respond: (i: object) => Promise<object>,
 }

@@ -4,15 +4,15 @@ import type { JSONRPCHandler, JSONRPCRequest, JSONRPCResponse } from "./json-rpc
 export abstract class Remote<T> {
     abstract connect(): Promise<void>
   
-    abstract flushRequests(): Promise<void>
+    //abstract flushRequests(): Promise<void>
   
-    abstract sendHashes(heads: Array<ArrayBuffer>): Promise<void>
+    //abstract sendHashes(heads: Array<ArrayBuffer>): Promise<void>
   
-    abstract requestHeadHashes(): Promise<Set<ArrayBuffer>>
+    abstract headHashes: JSONRPCHandler<void, Promise<Set<ArrayBuffer>>>
   
-    abstract sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void>
+    //abstract sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void>
   
-    abstract requestPredecessors(hashes: Array<ArrayBuffer>, depth: number): Promise<Set<ArrayBuffer>>
+    //abstract requestPredecessors(hashes: Array<ArrayBuffer>, depth: number): Promise<Set<ArrayBuffer>>
   
     /**
      * This also validates that the remote sent a valid object.
@@ -21,9 +21,9 @@ export abstract class Remote<T> {
     // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API#concepts_and_usage
     // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
     // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
-    abstract requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>>; // TODO FIXME maybe streaming
+    //abstract requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>>; // TODO FIXME maybe streaming
   
-    abstract requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>>
+    //abstract requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>>
   }
   // https://developer.mozilla.org/en-US/docs/Web/API
   // https://developer.mozilla.org/en-US/docs/Web/API/Barcode_Detection_API
@@ -32,7 +32,7 @@ export abstract class Remote<T> {
   
   class WebSocketRemote<T> extends Remote<T> {
     socket!: WebSocket
-    methods: Map<string, () => Promise<void>>
+    methods: Map<string, JSONRPCHandler<any, any>>
   
     constructor() {
       super()
@@ -58,38 +58,34 @@ export abstract class Remote<T> {
   
     // this is running in the background
     handleRequests(): void {
-      this.socket.addEventListener("message", (event) => {
+      this.socket.addEventListener("message", async (event) => {
         // TODO FIXME put casting into conditional check, CHECK all parameters as this is remotely controlled data
-        let response = JSON.parse(event.data) as JSONRPCRequest<any>
+        let request = JSON.parse(event.data) as JSONRPCRequest<any>
   
-        if (response.method) {
+        if (request.method) {
           console.log("got method ")
+
+          let method = this.methods.get(request.method);
+          if (method) {
+            this.socket.send(JSON.stringify(await method.respond(request.params)))
+          }
         }
       })
     }
   
-    async flushRequests(): Promise<void> {
-    }
-  
-    async sendHashes(heads: Array<ArrayBuffer>): Promise<void> {
-  
-    }
-  
     headHashes: JSONRPCHandler<void, Promise<Set<ArrayBuffer>>> = {
       request: async (params) => {
-        // TODO FIXME clean all of this up and just provide some T -> object and object -> T mapping functions for json usage - this could probably be replaced by something binary later
-  
-        let response = await this.genericRequestHandler<void, number[][], string>("headHashes", params)
-        if ('result' in response) {
-          return 
-        } else {
-          throw new Error(response.error)
-        }
+        return await this.genericRequestHandler<void, Set<ArrayBuffer>, string>("headHashes", params)
       },
       respond: () => {
-        let arrayBuffer = new ArrayBuffer(0)
-        return
+        return await this.genericResponseHandler<void, Set<ArrayBuffer>, string>("headHashes", () => {
+            return new Set([new ArrayBuffer(0)])
+        })
       }
+    }
+
+    genericResponseHandler<I, O>(name: string, callback: I => O) {
+
     }
   
     genericRequestHandler<P, R, E>(name: string, params: P): Promise<JSONRPCResponse<R, E>> {
@@ -121,36 +117,18 @@ export abstract class Remote<T> {
             this.socket.addEventListener("close", onclose)
   
             console.log(response)
-            resolve(response)
+
+            if ('result' in response) {
+                resolve(response)
+            } else {
+                reject(new Error(response.error))
+            }
           }
         }
   
         this.socket.addEventListener("message", onmessage)
         this.socket.addEventListener("close", onclose)
       })
-    }
-  
-    async sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void> {
-  
-    }
-  
-    async requestPredecessors(hashes: Array<ArrayBuffer>, depth: number): Promise<Set<ArrayBuffer>> {
-  
-    }
-  
-    /**
-     * This also validates that the remote sent a valid object.
-     * @param keys the key to request from the remote
-     */
-    // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API#concepts_and_usage
-    // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
-    // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
-    async requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>> {
-      
-    }
-  
-    async requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>> {
-  
     }
   }
   
