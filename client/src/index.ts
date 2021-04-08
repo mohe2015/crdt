@@ -33,6 +33,7 @@ import {
 } from '@dev.mohe/crdt-lib';
 import crypto from '@dev.mohe/isomorphic-webcrypto';
 import type { JSONRPCHandler, JSONRPCRequest, JSONRPCResponse } from './json-rpc';
+import type { Remote } from './remote';
 
 // TODO use https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist
 
@@ -42,7 +43,7 @@ export async function hashObject<T>(object: T): Promise<ArrayBuffer> {
   return await crypto.subtle.digest('SHA-512', enc.encode(stringified));
 }
 
-type CmRDTLogEntry<T> = Readonly<{
+export type CmRDTLogEntry<T> = Readonly<{
   value: T;
   hash: ArrayBuffer;
   random: ArrayBuffer;
@@ -55,13 +56,13 @@ function cmrdtLogEntrySize<T>(entry: CmRDTLogEntry<T>): number {
   return stringify(entry.value).length + entry.hash.byteLength + entry.random.byteLength + entry.previousHashes.map(a => a.byteLength).reduce((prev, curr) => prev + curr) + entry.author.byteLength + entry.signature.byteLength
 }
 
-type CmRDTLog<T> = Readonly<CmRDTLogEntry<T>[]>;
+export type CmRDTLog<T> = Readonly<CmRDTLogEntry<T>[]>;
 
-interface CmRDTFactory {
+export interface CmRDTFactory {
   initialize<T>(databaseName: string): Promise<CmRDT<T>>;
 }
 
-abstract class CmRDT<T> {
+export abstract class CmRDT<T> {
   abstract getTransaction(storeNames: string | Iterable<string>, mode?: IDBTransactionMode): [CmRDTTransaction<T>, Promise<void>];
 
   // TODO FIXME make this mostly usable from both sides
@@ -124,7 +125,7 @@ abstract class CmRDT<T> {
   }
 }
 
-abstract class CmRDTTransaction<T> {
+export abstract class CmRDTTransaction<T> {
 
   abstract getEntries(entries: Set<ArrayBuffer>): Promise<Array<CmRDTLogEntry<any>>>;
 
@@ -135,250 +136,7 @@ abstract class CmRDTTransaction<T> {
   abstract contains(hash: ArrayBuffer): Promise<boolean>
 }
 
-abstract class Remote<T> {
-  abstract connect(): Promise<void>
-
-  abstract flushRequests(): Promise<void>
-
-  abstract sendHashes(heads: Array<ArrayBuffer>): Promise<void>
-
-  abstract requestHeadHashes(): Promise<Set<ArrayBuffer>>
-
-  abstract sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void>
-
-  abstract requestPredecessors(hashes: Array<ArrayBuffer>, depth: number): Promise<Set<ArrayBuffer>>
-
-  /**
-   * This also validates that the remote sent a valid object.
-   * @param keys the key to request from the remote
-   */
-  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API#concepts_and_usage
-  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
-  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
-  abstract requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>>; // TODO FIXME maybe streaming
-
-  abstract requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>>
-}
-// https://developer.mozilla.org/en-US/docs/Web/API
-// https://developer.mozilla.org/en-US/docs/Web/API/Barcode_Detection_API
-// https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
-// https://developer.mozilla.org/en-US/docs/Web/API/Broadcast_Channel_API
-
-
-
-class WebSocketRemote<T> extends Remote<T> {
-  socket!: WebSocket
-  methods: Map<string, () => Promise<void>>
-
-  constructor() {
-    super()
-    this.methods = new Map()
-    this.methods.set()
-  }
-
-  connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.socket = new WebSocket("wss://localhost:8888")
-      //socket.binaryType = "blob" // vs arraybuffer
-  
-      this.socket.addEventListener("error", (event) => {
-        console.error(event)
-        reject()
-      })
-  
-      this.socket.addEventListener("open", (event) => {
-        console.log(event)
-        resolve()
-      })
-    })
-  }
-
-  // this is running in the background
-  handleRequests(): void {
-    this.socket.addEventListener("message", (event) => {
-      // TODO FIXME put casting into conditional check, CHECK all parameters as this is remotely controlled data
-      let response = JSON.parse(event.data) as JSONRPCRequest<any>
-
-      if (response.method) {
-        console.log("got method ")
-      }
-    })
-  }
-
-  async flushRequests(): Promise<void> {
-  }
-
-  async sendHashes(heads: Array<ArrayBuffer>): Promise<void> {
-
-  }
-
-  headHashes: JSONRPCHandler<void, Promise<Set<ArrayBuffer>>> = {
-    request: async (params) => {
-      let response = await this.genericRequestHandler<void, number[][], string>("headHashes", params)
-      if ('result' in response) {
-        return new Set(response.result.map(r => new Uint8Array(r).buffer))
-      } else {
-        throw new Error(response.error)
-      }
-    },
-    respond: () => {
-      let arrayBuffer = new ArrayBuffer(0)
-      return JSON.stringify(Array.from(new Uint8Array(arrayBuffer)))
-    }
-  }
-
-  genericRequestHandler<P, R, E>(name: string, params: P): Promise<JSONRPCResponse<R, E>> {
-    return new Promise((resolve, reject) => {
-      let id = crypto.getRandomValues(new Uint8Array(64)).reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
-      let request: JSONRPCRequest<P> = {
-        id,
-        method: name,
-        params
-      }
-      this.socket.send(JSON.stringify(request));
-
-      let onclose = (event: CloseEvent) => {
-        console.log(event)
-
-        this.socket.removeEventListener("message", onmessage)
-        this.socket.addEventListener("close", onclose)
-
-        reject()
-      }
-
-      let onmessage = (event: MessageEvent<string>) => {
-        console.log(event)
-
-        // TODO FIXME put parsing into conditional check
-        let response = JSON.parse(event.data) as JSONRPCResponse<R, E>
-        if (id === response.id) {
-          this.socket.removeEventListener("message", onmessage) // TODO test if this works
-          this.socket.addEventListener("close", onclose)
-
-          console.log(response)
-          resolve(response)
-        }
-      }
-
-      this.socket.addEventListener("message", onmessage)
-      this.socket.addEventListener("close", onclose)
-    })
-  }
-
-  async sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void> {
-
-  }
-
-  async requestPredecessors(hashes: Array<ArrayBuffer>, depth: number): Promise<Set<ArrayBuffer>> {
-
-  }
-
-  /**
-   * This also validates that the remote sent a valid object.
-   * @param keys the key to request from the remote
-   */
-  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API#concepts_and_usage
-  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
-  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
-  async requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>> {
-    
-  }
-
-  async requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>> {
-
-  }
-}
-
-class WebRTCRemote<T> extends Remote<T> {
-  // TODO https://www.w3.org/TR/webrtc/#perfect-negotiation-example
-  // initial bootstrap needs to be manual so we don't depend on a server (for now at least)
-  // as webrtc is quite complicated maybe provide alternative bootstrap using websockets (preferably with your own server)
-
-  async connect(): Promise<void> {
-    // https://www.w3.org/TR/webrtc/#simple-peer-to-peer-example
-    let certificate = await RTCPeerConnection.generateCertificate({
-      name: "RSASSA-PKCS1-v1_5",
-      // @ts-expect-error
-      modulusLength: 4096,
-      publicExponent: new Uint8Array([1, 0, 1]),
-      hash: "SHA-256"
-    })
-
-    // certificate.getFingerprints().map(f => f.value)
-
-    let connection: RTCPeerConnection = new RTCPeerConnection({
-      certificates: [certificate]
-      // TODO ice servers
-    })
-
-    connection.addEventListener("icecandidate", (event) => console.log(JSON.stringify({candidate: event.candidate}))); // you need to send this to remote - maybe generate qr code?
-
-    connection.addEventListener("icecandidateerror", console.error)
-
-    document.querySelector<HTMLButtonElement>("#button")!.addEventListener("click", async (event) => {
-      console.log("click")
-      let value = JSON.parse(document.querySelector<HTMLInputElement>("#input")!.value);
-      console.log(value)
-      
-      try {
-        if (value.description) {
-          await connection.setRemoteDescription(value.description);
-          // if we got an offer, we need to reply with an answer
-          if (value.description.type == 'offer') {
-            // @ts-expect-error
-            await connection.setLocalDescription();
-            console.log(JSON.stringify({description: connection.localDescription}));
-          }
-        } else if (value.candidate) {
-          await connection.addIceCandidate(value.candidate);
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    })
-
-    let response: RTCSessionDescriptionInit = await connection.createOffer({})
-    connection.setLocalDescription(response)
-    console.log(JSON.stringify({description: response}));
-  }
-
-  flushRequests(): Promise<void> {
-
-  }
-
-  async sendHashes(heads: Array<ArrayBuffer>): Promise<void> {
-
-  }
-
-  async requestHeadHashes(): Promise<Set<ArrayBuffer>> {
-
-  }
-
-  async sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void> {
-
-  }
-
-  async requestPredecessors(hashes: Array<ArrayBuffer>, depth: number): Promise<Set<ArrayBuffer>> {
-    
-  }
-
-  /**
-   * This also validates that the remote sent a valid object.
-   * @param keys the key to request from the remote
-   */
-  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API#concepts_and_usage
-  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
-  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
-  async requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>> {
-
-  }
-
-  async requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>> {
-
-  }
-}
-
-class IndexedDBCmRDTTransaction<T> extends CmRDTTransaction<T> {
+export class IndexedDBCmRDTTransaction<T> extends CmRDTTransaction<T> {
   transaction: IDBTransaction
 
   constructor(transaction: IDBTransaction) {
@@ -447,7 +205,7 @@ class IndexedDBCmRDTTransaction<T> extends CmRDTTransaction<T> {
   }
 }
 
-class IndexedDBCmRDTFactory implements CmRDTFactory {
+export class IndexedDBCmRDTFactory implements CmRDTFactory {
 
   initialize<T>(databaseName: string) {
     return new Promise<IndexedDBCmRDT<T>>((resolve, reject) => {
@@ -476,7 +234,7 @@ class IndexedDBCmRDTFactory implements CmRDTFactory {
   }
 }
 
-class IndexedDBCmRDT<T> extends CmRDT<T> {
+export class IndexedDBCmRDT<T> extends CmRDT<T> {
   idbDatabase: IDBDatabase;
 
   constructor(idbDatabase: IDBDatabase) {
@@ -526,7 +284,7 @@ class IndexedDBCmRDT<T> extends CmRDT<T> {
 // store the following:
 // identifier value previous-hashes
 
-async function createLogEntry<T>(
+export async function createLogEntry<T>(
   signKey: CryptoKeyPair,
   value: T,
   previousHashes: ArrayBuffer[],
@@ -561,7 +319,7 @@ async function createLogEntry<T>(
   return entry;
 }
 
-async function logToState<S, T>(currentState: S, remainingLog: CmRDTLog<T>, addLogEntryToState: (state: S, entry: CmRDTLogEntry<T>) => S): Promise<S> {
+export async function logToState<S, T>(currentState: S, remainingLog: CmRDTLog<T>, addLogEntryToState: (state: S, entry: CmRDTLogEntry<T>) => S): Promise<S> {
   return remainingLog.reduce((previousValue, currentValue) => {
     return addLogEntryToState(previousValue, currentValue);
   }, currentState)
@@ -584,165 +342,3 @@ async function logToState<S, T>(currentState: S, remainingLog: CmRDTLog<T>, addL
 // roles: type:server, type:admin, type:manager, type:user
 
 // also contains password, etc. but this is only send between servers and admins
-
-async function test() {
-  const remote = new WebSocketRemote<any>();
-  await remote.connect()
-  await remote.requestHeadHashes()
-
-  const cmrdt = await (new IndexedDBCmRDTFactory()).initialize<{operation: string, value: ArrayBuffer}|null>("a");
-
-  const server1Key = await generateKey();
-  const user1Key = await generateKey();
-
-  const [transaction1, done1] = cmrdt.getTransaction(["heads"], "readonly")
-  const heads = await transaction1.getHeads()
-  await done1
-  
-  const usersMapRoot = await createLogEntry(server1Key, null, heads);
-
-  const [transaction2, done2] = cmrdt.getTransaction(["log", "heads"], "readwrite")
-  await transaction2.insertEntries([usersMapRoot]);
-  await done2
-
-  const createUser1Entry = await createLogEntry(
-    server1Key,
-    {
-      operation: 'create',
-      key: await exportPublicKey(user1Key),
-      name: 'Moritz Hedtke',
-      role: 'admin',
-      passwordHash:
-        'this-is-super-secret-and-should-not-be-sent-to-unauthorized-clients',
-    },
-    [],
-  );
-
-  const createServer1Entry = await createLogEntry(
-    server1Key,
-    {
-      operation: 'create',
-      key: await exportPublicKey(server1Key),
-      name: 'Server 1',
-      role: 'server',
-    },
-    [],
-  );
-
-  const usersMapEntry1 = await createLogEntry(
-    server1Key,
-    {
-      operation: 'put',
-      value: createServer1Entry.hash,
-    },
-    [usersMapRoot.hash],
-  );
-
-  const usersMapEntry2 = await createLogEntry(
-    server1Key,
-    {
-      operation: 'put',
-      value: createUser1Entry.hash,
-    },
-    [usersMapEntry1.hash],
-  );
-
-  //const entry2 = await createLogEntry(server1Key, 2, [entry1.hash])
-
-  console.dir(usersMapRoot, { depth: null });
-  console.dir(createUser1Entry, { depth: null });
-  console.dir(usersMapEntry2, { depth: null });
-
-  // implementation of map
-  // create-entry key value (may be another log, maybe lazy, only store head hash there)
-  // delete-entry key (maybe allow re-adding?, yes causality allows this)
-
-  // gdpr compliance (right of deletion)
-  // probably custom operations for every type are needed.
-  // e.g. if there is a full update / override entry then the old entry could likely be removed
-
-  // usersMap
-  const usersMapPermanentlyDeleteEntry2 = await createLogEntry(
-    server1Key,
-    {
-      operation: 'gdpr-delete',
-      value: usersMapEntry2.hash,
-    },
-    [usersMapEntry2.hash],
-  );
-
-
-  // add hash of random and value
-  // and then hash of that and author and previous hashes
-  // deletion would remove the data, random but keep the hash
-  // this would allow us to keep the record itself and the causality
-
-  // probably the original hash should be kept in history but random and value should be removed
-  // so the data can not be reconstructed. this of course breaks the cryptographic verifyability
-  // this is likely pretty bad as it would allow malicious users to add fake entries
-  // maybe just don't propagate that entry at all as it is not verified any more
-  // but then chains based on it are broken
-
-  // maybe actually an unverified entry is better (removing everything except hash also to identify the entry). All users that can write there are trusted anyways so this should be fine.
-  // maybe the delete user should re-sign the deletion at least. then there is somebody to blame. (this makes sense as otherwise nobody could verify if it's allowed to be removed)
-  // users can delete their own entries.
-
-  // entry 1 is added
-  // entry 2 based on entry 1 is added
-  // entry 3 based on entry 1 is added
-  // a deletion request for entry 1 based on entry 1 is added (this modifies the existing entry 1 to an empty entry with an invalid hash / special contents signed by the deleter)
-  // the deletion request is propagated and all receivers SHALL delete the original content and replace it with the signed by the deleter entry.
-  // if you sync from entry 0, you directly get the entry signed by the deleter and also the later deletion request. (this is more or less a remove-wins-set for all hashes, it commutes at deletion)
-
-  // if you sync after entry 1 you apply the deletion request as soon as you get it.
-
-  // this may break the contents of entries following entry 1 if they are based on it. the underlying merge strategy MUST be resilient to such things. therefore last writer wins etc. may be risky
-  // as it may leak data that should not be leaked from the previous entry. further consequencdes need to be evaluated throughougly!
-  // e.g. for text this may remove children that should not have been affected. the protocol SHOULD be designed to be resilient to that but the importance is that data MUST be deleted reliably if possible.
-
-  // handle deleting a deletion request (creates a new deletion request for both the original and the deleted entry)
-
-
-  /*
-  biggest problem: HOW TO STORE IN DATABASE? / USE A DECENTRALIZED DATABASE?
-  project:
-  title (string)                      - plaintext (for now lww)
-  info (string)                       - plaintext
-  place (string)                      - plaintext
-  costs (decimal)                     - last writer wins
-  min_age (int)                       - last writer wins
-  max_age (int)                       - last writer wins
-  min_participants (int)              - last writer wins
-  max_participants (int)              - lww
-  presentation_type (string)          - plaintext
-  requirements (string)               - plaintext
-  random_assignments (bool)           - false wins
-
-  all of these first just setting values - show conflicts to user
-
-  user (TODO split up in types):
-  name (string)                       - lww? / plaintext
-  password [CRDT PROBLEM]             - lww?
-  type (enum)                         - nonchangable
-  project_leader project              - lastwriterwins / conflict? / log conflict
-  class string                        - lww?
-  age int                             - lww
-  away bool                           - false wins
-  password_changed (bool -> converges to true) - true wins
-  in_project project                  - last writer wins / log conflict
-  mostly just setting values - show conflicts to user / last writer wins - text could be merged
-
-  choice: (this has to be done properly)
-  rank int                            - last writer wins (time based as it is per user?)
-  project project                     - unchanable
-  user user                           - unchangeable
-  delete: conflict 
-
-  problem: constraints in a distributed system don't work
-  show the errors to users / admin
-  store locally in indexeddb
-  */
-
-}
-
-test()
