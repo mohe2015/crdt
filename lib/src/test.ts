@@ -21,9 +21,9 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import { exportPublicKey, generateKey } from '@dev.mohe/crdt-lib';
-import { createLogEntry, IndexedDBCmRDTFactory } from './index.js';
-import { WebSocketRemote } from './remote.js';
+import { exportPublicKey, generateKey } from './crypto';
+import { createLogEntry, IndexedDBCmRDTFactory } from './index';
+import { WebSocketRemote } from './remote';
 
 async function assertEqual<T>(actual: T, expected: T) {
     if (actual !== expected) {
