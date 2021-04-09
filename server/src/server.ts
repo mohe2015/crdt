@@ -80,7 +80,7 @@ async function main() {
 
             console.log(result)
         });
-        //ws.send('something');
+        ws.send('{"id": "1", "method": "headHashes", "params": null}');
     });
 
     server.listen(8888);

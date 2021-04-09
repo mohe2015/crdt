@@ -59,13 +59,17 @@ export class WebSocketRemote<T> extends Remote<T> {
     handleRequests(): void {
       this.socket.addEventListener("message", async (event) => {
         let request = JSON.parse(event.data)
+        console.log(request)
   
         if (request.method) {
-          console.log("got method ")
+          console.log("got method " + request.method)
 
           let method = this.methods.get(request.method);
           if (method) {
-            this.socket.send(JSON.stringify(await method.respond(request.params)))
+            console.log(method)
+            let response = await method.respond(request.params)
+            console.log(response)
+            this.socket.send(JSON.stringify(response))
           }
         }
       })
