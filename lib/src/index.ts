@@ -24,6 +24,9 @@
 
 // https://developer.mozilla.org/en-US/docs/Web/API/Broadcast_Channel_API
 
+// the database should probably also store the current state of things - which may duplicate data
+// but then all accesses are way more efficient
+
 import stringify from 'fast-json-stable-stringify';
 import {
   exportPublicKey,

@@ -15,6 +15,7 @@
   "license": "AGPL-3.0-or-later",
   "dependencies": {
     "@dev.mohe/isomorphic-webcrypto": "^1.0.0",
-    "fast-json-stable-stringify": "^2.1.0"
+    "fast-json-stable-stringify": "^2.1.0",
+    "postgres": "^1.0.2"
   }
 }
