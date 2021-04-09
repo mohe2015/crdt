@@ -188,7 +188,7 @@ export class IndexedDBCmRDTTransaction<T> extends CmRDTTransaction<T> {
    * @requires transaction be readwrite and accessing log and heads
    * @param entries 
    */
-  async insertEntries(entries: Array<CmRDTLogEntry<T>>): Promise<void> {
+  async insertEntries(entries: Set<CmRDTLogEntry<T>>): Promise<void> {
     const logObjectStore = this.transaction.objectStore("log");
     const headsObjectStore = this.transaction.objectStore("heads")
 
@@ -203,9 +203,9 @@ export class IndexedDBCmRDTTransaction<T> extends CmRDTTransaction<T> {
    * @requires transaction be readonly and accessing heads
    * @returns 
    */
-  async getHeads(): Promise<ArrayBuffer[]> {
-    const result = this.handleRequest(this.transaction.objectStore("heads").getAllKeys());
-    return result as unknown as ArrayBuffer[]
+  async getHeads(): Promise<Set<ArrayBuffer>> {
+    const result = await this.handleRequest(this.transaction.objectStore("heads").getAllKeys());
+    return new Set(result as ArrayBuffer[])
   }
 
   /**
@@ -213,10 +213,10 @@ export class IndexedDBCmRDTTransaction<T> extends CmRDTTransaction<T> {
    * @param entries 
    * @returns 
    */
-  async getEntries(entries: Set<ArrayBuffer>): Promise<Array<CmRDTLogEntry<any>>> {
+  async getEntries(entries: Set<ArrayBuffer>): Promise<Set<CmRDTLogEntry<any>>> {
     const logObjectStore = this.transaction.objectStore("log");
-    const result = [...entries].map(hash => this.handleRequest(logObjectStore.get(hash)))
-    return result as unknown as Array<CmRDTLogEntry<any>>
+    const result = await Promise.all([...entries].map(async hash => await this.handleRequest(logObjectStore.get(hash))))
+    return new Set(result)
   }
 
   /**
