@@ -23,9 +23,9 @@ export class PostgresCmRDT<T> extends CmRDT<T> {
       this.sql = sql;
     }
 
-    async transaction<T>(storeNames: string | Iterable<string>, mode?: IDBTransactionMode, cb: (transaction: CmRDTTransaction<T>) => T | Promise<T>): Promise<UnwrapPromiseArray<T>> {
+    async transaction<T>(storeNames: Iterable<string>, mode: IDBTransactionMode, cb: (transaction: CmRDTTransaction<T>) => T | Promise<T>): Promise<UnwrapPromiseArray<T>> {
         return await this.sql.begin(async sql => {
-            
+            return await cb(new PostgresCmRDTTransaction(sql))
         })
     }
 }
@@ -51,7 +51,8 @@ export class PostgresCmRDTTransaction<T> extends CmRDTTransaction<T> {
     }
 
     async contains(hash: ArrayBuffer): Promise<boolean> {
-        let [first]: [{"COUNT": number}?] = await this.sql`SELECT COUNT(*) FROM log WHERE hash = ${hash}}]`
-        first?.COUNT
+        // https://github.com/porsager/postgres/issues/85
+        let [first]: [{"COUNT": number}] = await this.sql`SELECT COUNT(*) FROM log WHERE hash = ${Buffer.from(new Uint8Array(hash))}}]`
+        return first.COUNT === 1
     }
 }
