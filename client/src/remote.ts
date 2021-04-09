@@ -1,6 +1,6 @@
 import type { CmRDTLogEntry } from "./index"
 import type { JSONRPCFailedResponse, JSONRPCHandler, JSONRPCRequest, JSONRPCResponse, JSONRPCSuccessfulResponse } from "./json-rpc"
-import type { Serializable, SetOfArrayBuffers, StringSerializer, Void } from "./serialization"
+import { Serializable, SetOfArrayBuffers, StringSerializer, StringToErrorSerializer, Void } from "./serialization"
 
 export abstract class Remote<T> {
     abstract connect(): Promise<void>
@@ -76,7 +76,7 @@ export class WebSocketRemote<T> extends Remote<T> {
   
     headHashes: JSONRPCHandler<void, Set<ArrayBuffer>> = {
       request: async (params) => {
-        return await this.genericRequestHandler<void, Void, Set<ArrayBuffer>, SetOfArrayBuffers, string, StringSerializer>("headHashes", params)
+        return await this.genericRequestHandler<void, Void, Set<ArrayBuffer>, SetOfArrayBuffers, Error, StringToErrorSerializer>("headHashes", new Void(), new SetOfArrayBuffers(), new StringToErrorSerializer())
       },
       respond: async () => {
         return await (this.genericResponseHandler<void, Set<ArrayBuffer>>("headHashes", () => {
@@ -89,7 +89,7 @@ export class WebSocketRemote<T> extends Remote<T> {
 
     }
   
-    genericRequestHandler<P, P_ extends Serializable<P>, R extends Error, R_ extends Serializable<R>, E, E_ extends Serializable<E>>(name: string, params: P_, result: R_, error: E_): Promise<R> {
+    genericRequestHandler<P, P_ extends Serializable<P>, R, R_ extends Serializable<R>, E extends Error, E_ extends Serializable<E>>(name: string, params: P_, result: R_, error: E_): Promise<R> {
       return new Promise((resolve, reject) => {
         let id = crypto.getRandomValues(new Uint8Array(64)).reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
         let request: JSONRPCRequest = {
@@ -118,9 +118,9 @@ export class WebSocketRemote<T> extends Remote<T> {
             this.socket.addEventListener("close", onclose)
   
             if ('result' in response) {
-                resolve(result.deserialize((response as JSONRPCSuccessfulResponse).result))
+                resolve(result.deserialize(response.result))
             } else {
-                reject(result.deserialize((response as JSONRPCFailedResponse).error))
+                reject(error.deserialize(response.error))
             }
           }
         }
