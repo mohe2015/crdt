@@ -3,7 +3,7 @@ export interface Serializable<T> {
     get(): T
     set(t: T): void
     serialize(): any // any could be replace by blob or so and we could make this work then quite easily
-    deserialize(o: any): void
+    deserialize(o: any): T
 }
   
 export class SetOfArrayBuffers implements Serializable<Set<ArrayBuffer>> {
@@ -23,6 +23,7 @@ export class SetOfArrayBuffers implements Serializable<Set<ArrayBuffer>> {
 
   deserialize(object: any) {
     this.value = new Set<ArrayBufferLike>((object as any).map((r: any) => new Uint8Array(r).buffer))
+    return this.value
   }
 }
 
@@ -61,5 +62,6 @@ export class StringSerializer implements Serializable<string> {
 
   deserialize(object: any) {
     this.value = object as string
+    return this.value
   }
 }

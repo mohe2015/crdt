@@ -25,13 +25,13 @@ export abstract class Remote<T> {
     //abstract requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>>; // TODO FIXME maybe streaming
   
     //abstract requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>>
-  }
-  // https://developer.mozilla.org/en-US/docs/Web/API
-  // https://developer.mozilla.org/en-US/docs/Web/API/Barcode_Detection_API
-  // https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
-  // https://developer.mozilla.org/en-US/docs/Web/API/Broadcast_Channel_API
+}
+// https://developer.mozilla.org/en-US/docs/Web/API
+// https://developer.mozilla.org/en-US/docs/Web/API/Barcode_Detection_API
+// https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
+// https://developer.mozilla.org/en-US/docs/Web/API/Broadcast_Channel_API
   
-  class WebSocketRemote<T> extends Remote<T> {
+export class WebSocketRemote<T> extends Remote<T> {
     socket!: WebSocket
     methods: Map<string, JSONRPCHandler<object, object>>
   
@@ -61,7 +61,7 @@ export abstract class Remote<T> {
     handleRequests(): void {
       this.socket.addEventListener("message", async (event) => {
         // TODO FIXME put casting into conditional check, CHECK all parameters as this is remotely controlled data
-        let request = JSON.parse(event.data) as JSONRPCRequest<Serializable<any>>
+        let request = JSON.parse(event.data)
   
         if (request.method) {
           console.log("got method ")
@@ -89,10 +89,10 @@ export abstract class Remote<T> {
 
     }
   
-    genericRequestHandler<P, P_ extends Serializable<P>, R, R_ extends Serializable<R>, E, E_ extends Serializable<E>>(name: string, params: P): Promise<R> {
+    genericRequestHandler<P, P_ extends Serializable<P>, R extends Error, R_ extends Serializable<R>, E, E_ extends Serializable<E>>(name: string, params: P_, result: R_, error: E_): Promise<R> {
       return new Promise((resolve, reject) => {
         let id = crypto.getRandomValues(new Uint8Array(64)).reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
-        let request: JSONRPCRequest<any> = {
+        let request: JSONRPCRequest = {
           id: id,
           method: name,
           params: params.serialize()
@@ -112,17 +112,15 @@ export abstract class Remote<T> {
           console.log(event)
   
           // TODO FIXME put parsing into conditional check
-          let response = JSON.parse(event.data) as JSONRPCResponse<any, any>
+          let response = JSON.parse(event.data)
           if (id === response.id) {
             this.socket.removeEventListener("message", onmessage) // TODO test if this works
             this.socket.addEventListener("close", onclose)
   
-            console.log(response)
-
             if ('result' in response) {
-                resolve((response as JSONRPCSuccessfulResponse<R>).result.get())
+                resolve(result.deserialize((response as JSONRPCSuccessfulResponse).result))
             } else {
-                reject(new Error((response as JSONRPCFailedResponse<E>).error.get().toString()))
+                reject(result.deserialize((response as JSONRPCFailedResponse).error))
             }
           }
         }
