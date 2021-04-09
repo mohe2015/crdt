@@ -33,11 +33,12 @@ export abstract class Remote<T> {
   
 export class WebSocketRemote<T> extends Remote<T> {
     socket!: WebSocket
-    methods: Map<string, JSONRPCHandler<object, object>>
+    methods: Map<string, JSONRPCHandler<any, any>>
   
     constructor() {
       super()
       this.methods = new Map()
+      this.methods.set("headHashes", this.headHashes)
     }
   
     connect(): Promise<void> {
