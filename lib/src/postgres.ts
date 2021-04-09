@@ -51,7 +51,7 @@ export class PostgresCmRDTTransaction<T> extends CmRDTTransaction<T> {
     }
 
     async contains(hash: ArrayBuffer): Promise<boolean> {
-        let result = await this.sql<{"COUNT": number}[]>`SELECT COUNT(*) FROM log WHERE hash = ${hash}}]`
-        result[0].COUNT
+        let [first]: [{"COUNT": number}?] = await this.sql`SELECT COUNT(*) FROM log WHERE hash = ${hash}}]`
+        first?.COUNT
     }
 }
