@@ -37,6 +37,41 @@ import type { Remote } from './remote';
 
 // TODO use https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist
 
+export abstract class CmRDTInterface<T> {
+  abstract sendHashes(heads: Array<ArrayBuffer>): Promise<void>
+
+  abstract headHashes(): Promise<Set<ArrayBuffer>>
+
+  abstract sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void>
+
+  /**
+   * This also validates that the remote sent a valid object.
+   * @param keys the key to request from the remote
+   */
+  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API#concepts_and_usage
+  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
+  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
+  abstract requestEntries(hashes: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>>; // TODO FIXME maybe streaming
+
+  abstract requestHashesOfMissingEntries(): Promise<Set<ArrayBuffer>>
+}
+
+class CmRDTImplementation<T> extends CmRDTInterface<T> {
+  
+
+}
+
+export abstract class CmRDTTransaction<T> {
+
+  abstract getEntries(hashes: Set<ArrayBuffer>): Promise<Set<CmRDTLogEntry<any>>>;
+
+  abstract getHeads(): Promise<Set<ArrayBuffer>>;
+
+  abstract insertEntries(entries: Set<CmRDTLogEntry<T>>): Promise<void>;
+
+  abstract contains(hash: ArrayBuffer): Promise<boolean>
+}
+
 export async function hashObject<T>(object: T): Promise<ArrayBuffer> {
   const stringified = stringify(object);
   const enc = new TextEncoder();
@@ -82,7 +117,7 @@ export abstract class CmRDT<T> {
     // see below for some ideas to circumvent this but there wasn't any similarily efficient way.
 
     // send your heads to the other peer. you will then find unknown hashes in their heads which you can request
-    let remoteHeadHashesRequest = remote.requestHeadHashes();
+    let remoteHeadHashesRequest = remote.headHashes.request();
     let [transaction1, done1] = this.getTransaction(["heads"], "readonly")
     let missingHeadsForRemoteRequest = remote.sendHashes(await transaction1.getHeads()); // maybe split up request
     let missingEntryHashesForRemoteRequest = remote.requestMissingEntryHashesForRemote()
@@ -123,17 +158,6 @@ export abstract class CmRDT<T> {
       predecessors = await predecessorsForMissingEntriesRequest // TODO FIXME use
     }
   }
-}
-
-export abstract class CmRDTTransaction<T> {
-
-  abstract getEntries(entries: Set<ArrayBuffer>): Promise<Array<CmRDTLogEntry<any>>>;
-
-  abstract getHeads(): Promise<ArrayBuffer[]>;
-
-  abstract insertEntries(entries: Array<CmRDTLogEntry<T>>): Promise<void>;
-
-  abstract contains(hash: ArrayBuffer): Promise<boolean>
 }
 
 export class IndexedDBCmRDTTransaction<T> extends CmRDTTransaction<T> {

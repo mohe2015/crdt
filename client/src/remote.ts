@@ -2,30 +2,6 @@ import type { CmRDTLogEntry } from "./index"
 import type { JSONRPCFailedResponse, JSONRPCHandler, JSONRPCRequest, JSONRPCResponse, JSONRPCSuccessfulResponse } from "./json-rpc"
 import { Serializable, SetOfArrayBuffers, StringSerializer, StringToErrorSerializer, Void } from "./serialization"
 
-export abstract class Remote<T> {
-    abstract connect(): Promise<void>
-  
-    //abstract flushRequests(): Promise<void>
-  
-    //abstract sendHashes(heads: Array<ArrayBuffer>): Promise<void>
-  
-    abstract headHashes: JSONRPCHandler<void, Set<ArrayBuffer>>
-  
-    //abstract sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void>
-  
-    //abstract requestPredecessors(hashes: Array<ArrayBuffer>, depth: number): Promise<Set<ArrayBuffer>>
-  
-    /**
-     * This also validates that the remote sent a valid object.
-     * @param keys the key to request from the remote
-     */
-    // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API#concepts_and_usage
-    // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
-    // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
-    //abstract requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>>; // TODO FIXME maybe streaming
-  
-    //abstract requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>>
-}
 // https://developer.mozilla.org/en-US/docs/Web/API
 // https://developer.mozilla.org/en-US/docs/Web/API/Barcode_Detection_API
 // https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
@@ -81,7 +57,8 @@ export class WebSocketRemote<T> extends Remote<T> {
       },
       respond: async (params: object) => {
         return await (this.genericResponseHandler<void, Void, Set<ArrayBuffer>, SetOfArrayBuffers, Error, StringToErrorSerializer>("headHashes", async () => {
-            return new Set([new ArrayBuffer(0)])
+          // TODO FIXME this should be somewhere else so we don't repeat it
+          return new Set([new ArrayBuffer(0)])
         }, new Void(), new SetOfArrayBuffers(), new StringToErrorSerializer()))
       }
     }
