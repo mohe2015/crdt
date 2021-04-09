@@ -37,30 +37,6 @@ import type { Remote } from './remote';
 
 // TODO use https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist
 
-export abstract class CmRDTInterface<T> {
-  abstract sendHashes(heads: Array<ArrayBuffer>): Promise<void>
-
-  abstract headHashes(): Promise<Set<ArrayBuffer>>
-
-  abstract sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void>
-
-  /**
-   * This also validates that the remote sent a valid object.
-   * @param keys the key to request from the remote
-   */
-  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API#concepts_and_usage
-  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
-  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
-  abstract requestEntries(hashes: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>>; // TODO FIXME maybe streaming
-
-  abstract requestHashesOfMissingEntries(): Promise<Set<ArrayBuffer>>
-}
-
-class CmRDTImplementation<T> extends CmRDTInterface<T> {
-  
-
-}
-
 export abstract class CmRDTTransaction<T> {
 
   abstract getEntries(hashes: Set<ArrayBuffer>): Promise<Set<CmRDTLogEntry<any>>>;

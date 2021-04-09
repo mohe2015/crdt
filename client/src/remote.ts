@@ -6,7 +6,27 @@ import { Serializable, SetOfArrayBuffers, StringSerializer, StringToErrorSeriali
 // https://developer.mozilla.org/en-US/docs/Web/API/Barcode_Detection_API
 // https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
 // https://developer.mozilla.org/en-US/docs/Web/API/Broadcast_Channel_API
-  
+ 
+export abstract class Remote<T> {
+
+  abstract headHashes: JSONRPCHandler<void, Set<ArrayBuffer>>
+
+  //abstract sendHashes(heads: Array<ArrayBuffer>): Promise<void>
+
+  //abstract sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void>
+
+  /**
+   * This also validates that the remote sent a valid object.
+   * @param keys the key to request from the remote
+   */
+  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API#concepts_and_usage
+  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
+  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
+  //abstract requestEntries(hashes: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>>; // TODO FIXME maybe streaming
+
+  //abstract requestHashesOfMissingEntries(): Promise<Set<ArrayBuffer>>
+}
+
 export class WebSocketRemote<T> extends Remote<T> {
     socket!: WebSocket
     methods: Map<string, JSONRPCHandler<any, any>>
