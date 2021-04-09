@@ -78,15 +78,15 @@ export class WebSocketRemote<T> extends Remote<T> {
       request: async (params) => {
         return await this.genericRequestHandler<void, Void, Set<ArrayBuffer>, SetOfArrayBuffers, Error, StringToErrorSerializer>("headHashes", new Void(), new SetOfArrayBuffers(), new StringToErrorSerializer())
       },
-      respond: async () => {
-        return await (this.genericResponseHandler<void, Set<ArrayBuffer>>("headHashes", () => {
+      respond: async (params: object) => {
+        return await (this.genericResponseHandler<void, Void, Set<ArrayBuffer>, SetOfArrayBuffers, Error, StringToErrorSerializer>("headHashes", async () => {
             return new Set([new ArrayBuffer(0)])
-        }))()
+        }, params))
       }
     }
 
-    genericResponseHandler<I, O>(name: string, callback: (i: I) => O): (i: object) => Promise<any> {
-
+    async genericResponseHandler<P, P_ extends Serializable<P>, R, R_ extends Serializable<R>, E extends Error, E_ extends Serializable<E>>(name: string, callback: (i: P) => Promise<R>, params: object): Promise<object> {
+      
     }
   
     genericRequestHandler<P, P_ extends Serializable<P>, R, R_ extends Serializable<R>, E extends Error, E_ extends Serializable<E>>(name: string, params: P_, result: R_, error: E_): Promise<R> {
