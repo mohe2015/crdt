@@ -34,10 +34,8 @@ export class WebSocketRemote<T> extends Remote<T> {
       })
     }
   
-    // this is running in the background
     handleRequests(): void {
       this.socket.addEventListener("message", async (event) => {
-        // TODO FIXME put casting into conditional check, CHECK all parameters as this is remotely controlled data
         let request = JSON.parse(event.data)
   
         if (request.method) {
@@ -56,14 +54,14 @@ export class WebSocketRemote<T> extends Remote<T> {
         return await this.genericRequestHandler<void, Void, Set<ArrayBuffer>, SetOfArrayBuffers, Error, StringToErrorSerializer>("headHashes", new Void(), new SetOfArrayBuffers(), new StringToErrorSerializer())
       },
       respond: async (params: object) => {
-        return await (this.genericResponseHandler<void, Void, Set<ArrayBuffer>, SetOfArrayBuffers, Error, StringToErrorSerializer>("headHashes", async () => {
+        return await (this.genericResponseHandler<void, Void, Set<ArrayBuffer>, SetOfArrayBuffers, Error, StringToErrorSerializer>("headHashes", new Void(), new SetOfArrayBuffers(), new StringToErrorSerializer(), async () => {
           // TODO FIXME this should be somewhere else so we don't repeat it
           return new Set([new ArrayBuffer(0)])
-        }, new Void(), new SetOfArrayBuffers(), new StringToErrorSerializer()))
+        }))
       }
     }
 
-    async genericResponseHandler<P, P_ extends Serializable<P>, R, R_ extends Serializable<R>, E extends Error, E_ extends Serializable<E>>(name: string, callback: (i: P) => Promise<R>, params: P_, result: R_, error: E_): Promise<object> {
+    async genericResponseHandler<P, P_ extends Serializable<P>, R, R_ extends Serializable<R>, E extends Error, E_ extends Serializable<E>>(name: string, params: P_, result: R_, error: E_, callback: (i: P) => Promise<R>): Promise<object> {
       try {
         let response = await callback(params.get())
         result.set(response)
