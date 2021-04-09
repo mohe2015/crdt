@@ -1,4 +1,4 @@
-import type { CmRDTLogEntry } from "./index"
+import type { CmRDT, CmRDTLogEntry } from "./index"
 import type { JSONRPCFailedResponse, JSONRPCHandler, JSONRPCRequest, JSONRPCResponse, JSONRPCSuccessfulResponse } from "./json-rpc"
 import { Serializable, SetOfArrayBuffers, StringSerializer, StringToErrorSerializer, Void } from "./serialization"
 
@@ -10,9 +10,11 @@ import { Serializable, SetOfArrayBuffers, StringSerializer, StringToErrorSeriali
 export class WebSocketRemote<T> extends Remote<T> {
     socket!: WebSocket
     methods: Map<string, JSONRPCHandler<any, any>>
+    cmrdt: CmRDT<T>
   
-    constructor() {
+    constructor(cmrdt: CmRDT<T>) {
       super()
+      this.cmrdt = cmrdt
       this.methods = new Map()
       this.methods.set("headHashes", this.headHashes)
     }
@@ -33,7 +35,7 @@ export class WebSocketRemote<T> extends Remote<T> {
         })
       })
     }
-  
+
     handleRequests(): void {
       this.socket.addEventListener("message", async (event) => {
         let request = JSON.parse(event.data)
@@ -48,15 +50,17 @@ export class WebSocketRemote<T> extends Remote<T> {
         }
       })
     }
-  
+
     headHashes: JSONRPCHandler<void, Set<ArrayBuffer>> = {
       request: async (params) => {
         return await this.genericRequestHandler<void, Void, Set<ArrayBuffer>, SetOfArrayBuffers, Error, StringToErrorSerializer>("headHashes", new Void(), new SetOfArrayBuffers(), new StringToErrorSerializer())
       },
       respond: async (params: object) => {
         return await (this.genericResponseHandler<void, Void, Set<ArrayBuffer>, SetOfArrayBuffers, Error, StringToErrorSerializer>("headHashes", new Void(), new SetOfArrayBuffers(), new StringToErrorSerializer(), async () => {
-          // TODO FIXME this should be somewhere else so we don't repeat it
-          return new Set([new ArrayBuffer(0)])
+          let [transaction, done] = this.cmrdt.getTransaction(["heads"], "readonly")
+          let heads = await transaction.getHeads()
+          await done
+          return heads
         }))
       }
     }
