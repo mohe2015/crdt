@@ -80,7 +80,7 @@ async function main() {
 
             console.log(result)
         });
-        ws.send('something');
+        //ws.send('something');
     });
 
     server.listen(8888);

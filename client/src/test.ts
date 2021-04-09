@@ -22,7 +22,6 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import { exportPublicKey, generateKey } from '@dev.mohe/crdt-lib';
-import './cmrdt.js';
 import { createLogEntry, IndexedDBCmRDTFactory } from './index.js';
 import { WebSocketRemote } from './remote.js';
 
