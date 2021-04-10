@@ -1,6 +1,7 @@
 import type { CmRDT, CmRDTLogEntry } from "./index"
-import type { JSONRPCFailedResponse, JSONRPCHandler, JSONRPCRequest, JSONRPCResponse, JSONRPCSuccessfulResponse } from "./json-rpc"
-import { Serializable, SetOfArrayBuffers, StringSerializer, StringToErrorSerializer, Void } from "./serialization"
+import type { JSONRPCHandler, JSONRPCRequest } from "./json-rpc"
+import { Serializable, SetOfArrayBuffers, StringToErrorSerializer, Void } from "./serialization"
+import WebSocket from 'isomorphic-ws';
 
 // https://developer.mozilla.org/en-US/docs/Web/API
 // https://developer.mozilla.org/en-US/docs/Web/API/Barcode_Detection_API
@@ -31,10 +32,11 @@ export class WebSocketRemote<T> extends Remote<T> {
     socket!: WebSocket
     methods: Map<string, JSONRPCHandler<any, any>>
     cmrdt: CmRDT<T>
-  
-    constructor(cmrdt: CmRDT<T>) {
+
+    constructor(cmrdt: CmRDT<T>, socket?: WebSocket) {
       super()
       this.cmrdt = cmrdt
+      this.socket = socket!
       this.methods = new Map()
       this.methods.set("headHashes", this.headHashes)
     }
@@ -81,10 +83,9 @@ export class WebSocketRemote<T> extends Remote<T> {
       },
       respond: async (params: object) => {
         return await (this.genericResponseHandler<void, Void, Set<ArrayBuffer>, SetOfArrayBuffers, Error, StringToErrorSerializer>("headHashes", new Void(), new SetOfArrayBuffers(), new StringToErrorSerializer(), async () => {
-          let [transaction, done] = this.cmrdt.getTransaction(["heads"], "readonly")
-          let heads = await transaction.getHeads()
-          await done
-          return heads
+          return await this.cmrdt.transaction(["heads"], "readonly", async (transaction) => {
+            return await transaction.getHeads()
+          })
         }))
       }
     }

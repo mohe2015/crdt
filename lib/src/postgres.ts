@@ -1,7 +1,7 @@
 import { CmRDT, CmRDTFactory, CmRDTLogEntry, CmRDTTransaction, UnwrapPromiseArray } from "./index"
 import postgres from 'postgres'
 
-class PostgresCmRDTFactory implements CmRDTFactory {
+export class PostgresCmRDTFactory implements CmRDTFactory {
     async initialize<T>(databaseName: string): Promise<CmRDT<T>> {
        let sql = postgres({
            database: databaseName,

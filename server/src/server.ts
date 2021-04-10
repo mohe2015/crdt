@@ -24,9 +24,9 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { createSecureServer } from 'http2';
-import WebSocket from 'ws';
+import WebSocket from 'isomorphic-ws';
 import { WebSocketRemote } from '@dev.mohe/crdt-lib/src/remote'
-import { IndexedDBCmRDTFactory } from '@dev.mohe/crdt-lib/src';
+import { PostgresCmRDTFactory } from '@dev.mohe/crdt-lib/src/postgres';
 
 // TODO check origin - return 403 if forbidden or not existent
 
@@ -73,19 +73,18 @@ async function main() {
     const wss = new WebSocket.Server({ server });
 
     const cmrdt = await (new PostgresCmRDTFactory()).initialize<{operation: string, value: ArrayBuffer}|null>("a");
+    console.log(cmrdt)
 
     wss.on('connection', (ws, req) => {
         const ip = req.socket.remoteAddress;
-        ws.on('message', (message) => {
+        ws.on('message', async (message) => {
             console.log('received: %s', message);
 
             let result = JSON.parse(message.toString())
 
             console.log(result)
 
-
-
-            const remote = new WebSocketRemote<any>(cmrdt);
+            const remote = new WebSocketRemote<any>(cmrdt, ws);
             await remote.connect()
             remote.handleRequests()
         });

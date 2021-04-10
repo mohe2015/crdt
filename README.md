@@ -4,6 +4,10 @@ SPDX-FileCopyrightText: 2020 Moritz Hedtke <Moritz.Hedtke@t-online.de>
 SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
+https://nodejs.org/api/packages.html
+
+https://nodejs.org/api/esm.html
+
 Use chromium for testing as it has better async debugging support
 
 

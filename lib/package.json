@@ -3,11 +3,19 @@
   "version": "0.0.1",
   "description": "",
   "type": "module",
-  "module": "./src/crypto.ts",
+  "module": "./src/index.ts",
+  "main": "./src/index.ts",
   "exports": {
-    "default": "./src/crypto.ts"
+    ".": "./src/index.ts",
+    "./src/crypto": "./src/crypto.ts",
+    "./src/indexeddb": "./src/indexeddb.ts",
+    "./src/json-rpc": "./src/json-rpc.ts",
+    "./src/postgres": "./src/postgres.ts",
+    "./src/remote": "./src/remote.ts",
+    "./src/serialization": "./src/serialization.ts",
+    "./src/test": "./src/test.ts"
   },
-  "types": "./src/crypto.ts",
+  "types": "./src/index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
@@ -17,7 +25,9 @@
   "dependencies": {
     "@dev.mohe/isomorphic-webcrypto": "^1.0.0",
     "fast-json-stable-stringify": "^2.1.0",
-    "postgres": "^2.0.0-beta.4"
+    "isomorphic-ws": "^4.0.1",
+    "postgres": "^2.0.0-beta.4",
+    "ws": "^7.4.4"
   },
   "devDependencies": {
     "@types/node": "^14.14.37",
