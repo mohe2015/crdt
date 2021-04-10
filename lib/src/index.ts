@@ -38,6 +38,10 @@ import type { Remote } from './remote';
 
 // TODO use https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist
 
+export type UnwrapPromiseArray<T> = T extends any[] ? {
+  [k in keyof T]: T[k] extends Promise<infer R> ? R : T[k]
+} : T;
+
 export abstract class CmRDTTransaction<T> {
 
   abstract getEntries(hashes: Set<ArrayBuffer>): Promise<Set<CmRDTLogEntry<any>>>;
@@ -65,7 +69,7 @@ export interface CmRDTFactory {
 }
 
 export abstract class CmRDT<T> {
-  abstract getTransaction(storeNames: string | Iterable<string>, mode?: IDBTransactionMode): [CmRDTTransaction<T>, Promise<void>];
+  async transaction<T>(storeNames: Iterable<string>, mode: IDBTransactionMode, cb: (transaction: CmRDTTransaction<T>) => Promise<T>): Promise<UnwrapPromiseArray<T>>;
 
   // TODO FIXME make this mostly usable from both sides
   // remote needs to already be connected - maybe this should be initiated from a sync command?
