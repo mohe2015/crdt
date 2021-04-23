@@ -38,10 +38,6 @@ import type { Remote } from './remote';
 
 // TODO use https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist
 
-export type UnwrapPromiseArray<T> = T extends any[] ? {
-  [k in keyof T]: T[k] extends Promise<infer R> ? R : T[k]
-} : T;
-
 export abstract class CmRDTTransaction<T> {
 
   abstract getEntries(hashes: Set<ArrayBuffer>): Promise<Set<CmRDTLogEntry<any>>>;
@@ -69,7 +65,7 @@ export interface CmRDTFactory {
 }
 
 export abstract class CmRDT<T> {
-  async transaction<T>(storeNames: Iterable<string>, mode: IDBTransactionMode, cb: (transaction: CmRDTTransaction<T>) => Promise<T>): Promise<UnwrapPromiseArray<T>>;
+  abstract transaction<T>(storeNames: Iterable<string>, mode: IDBTransactionMode, cb: (transaction: CmRDTTransaction<T>) => Promise<T>): Promise<T>;
 
   // TODO FIXME make this mostly usable from both sides
   // remote needs to already be connected - maybe this should be initiated from a sync command?
@@ -120,7 +116,7 @@ export abstract class CmRDT<T> {
       await remote.sendEntries.request(missingEntriesForRemote)
       missingEntries = await remote.requestEntries.request(unknownHashes)
       missingEntryHashesForRemote = await remote.requestHashesOfMissingEntries.request()
-      predecessors = await remote.requestPredecessors(unknownHashes, 3);
+      predecessors = await remote.requestPredecessors.request(unknownHashes);
     }
   }
 }

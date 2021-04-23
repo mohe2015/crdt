@@ -106,22 +106,23 @@ export class IndexedDBCmRDTTransaction<T> extends CmRDTTransaction<T> {
       this.idbDatabase = idbDatabase;
     }
   
-    getTransaction(storeNames: Iterable<string>, mode?: IDBTransactionMode): [CmRDTTransaction<T>, Promise<void>] {
-      const transaction = this.idbDatabase.transaction(storeNames, mode);
+    async transaction<T>(storeNames: Iterable<string>, mode: IDBTransactionMode, cb: (transaction: CmRDTTransaction<T>) => Promise<T>): Promise<T> {
+      let idbTransaction = this.idbDatabase.transaction(storeNames, mode);
       const done = new Promise<void>((resolve, reject) => {
-        transaction.addEventListener('abort', () => {
-          console.warn(transaction.error)
+        idbTransaction.addEventListener('abort', () => {
+          console.warn(idbTransaction.error)
           resolve() // aborting was likely done explicitly so this SHOULD be fine
         })
-        transaction.addEventListener('complete', () => {
+        idbTransaction.addEventListener('complete', () => {
           resolve()
         })
-        transaction.addEventListener('error', (event) => {
+        idbTransaction.addEventListener('error', (event) => {
           event.stopPropagation()
-          reject(transaction.error)
+          reject(idbTransaction.error)
         })
       })
-      return [new IndexedDBCmRDTTransaction<T>(transaction), done]
+      let transaction = new IndexedDBCmRDTTransaction<T>(idbTransaction)
+      return await cb(transaction)
     }
   }
   

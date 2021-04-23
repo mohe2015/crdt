@@ -1,4 +1,4 @@
-import { CmRDT, CmRDTFactory, CmRDTLogEntry, CmRDTTransaction, UnwrapPromiseArray } from "./index"
+import { CmRDT, CmRDTFactory, CmRDTLogEntry, CmRDTTransaction } from "./index"
 import postgres from 'postgres'
 
 export class PostgresCmRDTFactory implements CmRDTFactory {
@@ -36,7 +36,7 @@ export class PostgresCmRDT<T> extends CmRDT<T> {
       this.sql = sql;
     }
 
-    async transaction<T>(storeNames: Iterable<string>, mode: IDBTransactionMode, cb: (transaction: PostgresCmRDTTransaction<T>) => Promise<T>): Promise<UnwrapPromiseArray<T>> {
+    async transaction<T>(storeNames: Iterable<string>, mode: IDBTransactionMode, cb: (transaction: PostgresCmRDTTransaction<T>) => Promise<T>): Promise<T> {
         return await this.sql.begin(async sql => {
             return await cb(new PostgresCmRDTTransaction(sql))
         })

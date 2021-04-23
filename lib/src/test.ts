@@ -22,7 +22,8 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import { exportPublicKey, generateKey } from './crypto';
-import { createLogEntry, IndexedDBCmRDTFactory } from './index';
+import { createLogEntry } from './index';
+import { IndexedDBCmRDTFactory } from './indexeddb';
 import { WebSocketRemote } from './remote';
 
 async function assertEqual<T>(actual: T, expected: T) {

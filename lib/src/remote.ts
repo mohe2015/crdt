@@ -27,7 +27,7 @@ export abstract class Remote<T> {
 
   abstract requestHashesOfMissingEntries: JSONRPCHandler<void, Set<ArrayBuffer>>
 
-  abstract requestPredecessors: JSONRPCHandler<Set<ArrayBuffer>, >
+  abstract requestPredecessors: JSONRPCHandler<Set<ArrayBuffer>, Set<ArrayBuffer>>
 }
 
 export class WebSocketRemote<T> extends Remote<T> {
