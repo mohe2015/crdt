@@ -90,16 +90,15 @@ export abstract class CmRDT<T> {
     // send your heads to the other peer. you will then find unknown hashes in their heads which you can request
     let remoteHeadHashesRequest = remote.headHashes.request();
 
-    let heads = await this.transaction(["heads"], "readonly", async (transaction) => {
+    let heads = await this.transaction<Set<ArrayBuffer>>(["heads"], "readonly", async (transaction) => {
       return await transaction.getHeads()
     })
 
-    let missingHeadsForRemoteRequest = remote.sendHashes(heads); // maybe split up request
-    let missingEntryHashesForRemoteRequest = remote.requestMissingEntryHashesForRemote()
+    let missingHeadsForRemoteRequest = remote.sendHashes.request(heads);
 
     let potentiallyUnknownHashes: Set<ArrayBuffer> = await remoteHeadHashesRequest; // TODO FIXME an attacker could send large amounts of this, TODO FIXME also send n of their predecessors for efficiency
     await missingHeadsForRemoteRequest;
-    let missingEntriesForRemote = await missingEntryHashesForRemoteRequest;
+    let missingEntriesForRemote = await remote.headHashes.request()
 
     let unknownHashes = await this.transaction(["log"], "readonly", async (transaction) => {
       return (await Promise.all([...potentiallyUnknownHashes].map(async (e) => [e, await transaction.contains(e)]))).filter(e => e[0]).map(e => e[1])

@@ -12,7 +12,7 @@ export abstract class Remote<T> {
 
   abstract headHashes: JSONRPCHandler<void, Set<ArrayBuffer>>
 
-  //abstract sendHashes(heads: Array<ArrayBuffer>): Promise<void>
+  abstract sendHashes: JSONRPCHandler<Set<ArrayBuffer>, void>
 
   //abstract sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void>
 
