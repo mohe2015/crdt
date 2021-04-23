@@ -97,8 +97,6 @@ export abstract class CmRDT<T> {
     let missingHeadsForRemoteRequest = remote.sendHashes(heads); // maybe split up request
     let missingEntryHashesForRemoteRequest = remote.requestMissingEntryHashesForRemote()
 
-    remote.flushRequests();
-
     let potentiallyUnknownHashes: Set<ArrayBuffer> = await remoteHeadHashesRequest; // TODO FIXME an attacker could send large amounts of this, TODO FIXME also send n of their predecessors for efficiency
     await missingHeadsForRemoteRequest;
     let missingEntriesForRemote = await missingEntryHashesForRemoteRequest;
@@ -106,7 +104,7 @@ export abstract class CmRDT<T> {
     let unknownHashes = await this.transaction(["log"], "readonly", async (transaction) => {
       return (await Promise.all([...potentiallyUnknownHashes].map(async (e) => [e, await transaction.contains(e)]))).filter(e => e[0]).map(e => e[1])
     })
-    let missingEntries: Array<CmRDTLogEntry<T>> = []
+    let missingEntries: Set<CmRDTLogEntry<T>> = []
     let predecessors: Set<ArrayBuffer> = new Set()
 
     while (potentiallyUnknownHashes.size > 0) {
@@ -114,9 +112,9 @@ export abstract class CmRDT<T> {
       this.transaction(["log"], "readonly", async (transaction) => {
         await transaction.insertEntries(missingEntries)
 
-        potentiallyUnknownHashes = new Set([...missingEntries.flatMap(entry => entry.previousHashes), ...predecessors])
+        potentiallyUnknownHashes = new Set([...[...missingEntries].flatMap(entry => entry.previousHashes), ...predecessors])
   
-        unknownHashes = [...potentiallyUnknownHashes].filter(transaction.contains)
+        unknownHashes = (await Promise.all([...potentiallyUnknownHashes].map(async (e) => [e, await transaction.contains(e)]))).filter(e => e[0]).map(e => e[1])
 
         missingEntriesForRemote = await transaction.getEntries(missingEntriesForRemote)
       })
