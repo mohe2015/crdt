@@ -23,9 +23,11 @@ export abstract class Remote<T> {
   // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API#concepts_and_usage
   // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
   // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
-  abstract requestEntries: JSONRPCHandler<Set<ArrayBuffer>, Promise<Array<CmRDTLogEntry<T>>>> // TODO FIXME maybe streaming
+  abstract requestEntries: JSONRPCHandler<Set<ArrayBuffer>, Promise<Set<CmRDTLogEntry<T>>>> // TODO FIXME maybe streaming
 
   abstract requestHashesOfMissingEntries: JSONRPCHandler<void, Set<ArrayBuffer>>
+
+  abstract requestPredecessors: JSONRPCHandler<Set<ArrayBuffer>, >
 }
 
 export class WebSocketRemote<T> extends Remote<T> {
