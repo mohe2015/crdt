@@ -88,23 +88,22 @@ export abstract class CmRDT<T> {
     // see below for some ideas to circumvent this but there wasn't any similarily efficient way.
 
     // send your heads to the other peer. you will then find unknown hashes in their heads which you can request
-    let remoteHeadHashesRequest = remote.headHashes.request();
 
     let heads = await this.transaction<Set<ArrayBuffer>>(["heads"], "readonly", async (transaction) => {
-      return await transaction.getHeads()
+/**/  return await transaction.getHeads()
     })
 
-    let missingHeadsForRemoteRequest = remote.sendHashes.request(heads);
+/**/await remote.sendHashes.request(heads);
 
-    let potentiallyUnknownHashes: Set<ArrayBuffer> = await remoteHeadHashesRequest; // TODO FIXME an attacker could send large amounts of this, TODO FIXME also send n of their predecessors for efficiency
-    await missingHeadsForRemoteRequest;
-    let missingEntriesForRemote = await remote.headHashes.request()
+/**/let potentiallyUnknownHashes: Set<ArrayBuffer> = await remote.headHashes.request(); // TODO FIXME an attacker could send large amounts of this, TODO FIXME also send n of their predecessors for efficiency
+/**/let missingEntryHashesForRemote = await remote.requestHashesOfMissingEntries.request()
+    let missingEntriesForRemote: Set<CmRDTLogEntry<T>> = new Set()
 
     let unknownHashes = await this.transaction(["log"], "readonly", async (transaction) => {
-      return (await Promise.all([...potentiallyUnknownHashes].map(async (e) => [e, await transaction.contains(e)]))).filter(e => e[0]).map(e => e[1])
+/**/  return (await Promise.all([...potentiallyUnknownHashes].map(async (e) => [e, await transaction.contains(e)]))).filter(e => e[0]).map(e => e[1])
     })
-    let missingEntries: Set<CmRDTLogEntry<T>> = []
-    let predecessors: Set<ArrayBuffer> = new Set()
+/**/let missingEntries: Set<CmRDTLogEntry<T>> = new Set()
+/**/let predecessors: Set<ArrayBuffer> = new Set()
 
     while (potentiallyUnknownHashes.size > 0) {
       // TODO FIXME combine all transactions that can be combined?
@@ -115,12 +114,12 @@ export abstract class CmRDT<T> {
   
         unknownHashes = (await Promise.all([...potentiallyUnknownHashes].map(async (e) => [e, await transaction.contains(e)]))).filter(e => e[0]).map(e => e[1])
 
-        missingEntriesForRemote = await transaction.getEntries(missingEntriesForRemote)
+        missingEntriesForRemote = await transaction.getEntries(missingEntryHashesForRemote)
       })
      
-      await remote.sendEntries(missingEntriesForRemote)
-      missingEntries = await remote.requestEntries(unknownHashes)
-      missingEntriesForRemote = await remote.requestMissingEntryHashesForRemote()
+      await remote.sendEntries.request(missingEntriesForRemote)
+      missingEntries = await remote.requestEntries.request(unknownHashes)
+      missingEntryHashesForRemote = await remote.requestMissingEntryHashesForRemote()
       predecessors = await remote.requestPredecessors(unknownHashes, 3);
     }
   }

@@ -14,7 +14,7 @@ export abstract class Remote<T> {
 
   abstract sendHashes: JSONRPCHandler<Set<ArrayBuffer>, void>
 
-  //abstract sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void>
+  abstract sendEntries: JSONRPCHandler<Set<CmRDTLogEntry<any>>, void>
 
   /**
    * This also validates that the remote sent a valid object.
@@ -23,9 +23,9 @@ export abstract class Remote<T> {
   // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API#concepts_and_usage
   // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
   // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
-  //abstract requestEntries(hashes: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>>; // TODO FIXME maybe streaming
+  abstract requestEntries: JSONRPCHandler<Set<ArrayBuffer>, Promise<Array<CmRDTLogEntry<T>>>> // TODO FIXME maybe streaming
 
-  //abstract requestHashesOfMissingEntries(): Promise<Set<ArrayBuffer>>
+  abstract requestHashesOfMissingEntries: JSONRPCHandler<void, Set<ArrayBuffer>>
 }
 
 export class WebSocketRemote<T> extends Remote<T> {
