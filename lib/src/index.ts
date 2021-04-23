@@ -89,10 +89,13 @@ export abstract class CmRDT<T> {
 
     // send your heads to the other peer. you will then find unknown hashes in their heads which you can request
     let remoteHeadHashesRequest = remote.headHashes.request();
-    let [transaction1, done1] = this.getTransaction(["heads"], "readonly")
-    let missingHeadsForRemoteRequest = remote.sendHashes(await transaction1.getHeads()); // maybe split up request
+
+    let heads = await this.transaction(["heads"], "readonly", async (transaction) => {
+      return await transaction.getHeads()
+    })
+
+    let missingHeadsForRemoteRequest = remote.sendHashes(heads); // maybe split up request
     let missingEntryHashesForRemoteRequest = remote.requestMissingEntryHashesForRemote()
-    await done1
 
     remote.flushRequests();
 
@@ -100,33 +103,28 @@ export abstract class CmRDT<T> {
     await missingHeadsForRemoteRequest;
     let missingEntriesForRemote = await missingEntryHashesForRemoteRequest;
 
-    let [transaction2, done2] = this.getTransaction(["log"], "readonly")
-    let unknownHashes = [...potentiallyUnknownHashes].filter(transaction2.contains)
+    let unknownHashes = await this.transaction(["log"], "readonly", async (transaction) => {
+      return (await Promise.all([...potentiallyUnknownHashes].map(async (e) => [e, await transaction.contains(e)]))).filter(e => e[0]).map(e => e[1])
+    })
     let missingEntries: Array<CmRDTLogEntry<T>> = []
     let predecessors: Set<ArrayBuffer> = new Set()
-    await done2
 
     while (potentiallyUnknownHashes.size > 0) {
       // TODO FIXME combine all transactions that can be combined?
-      let [transaction, done] = this.getTransaction(["log"], "readonly")
+      this.transaction(["log"], "readonly", async (transaction) => {
+        await transaction.insertEntries(missingEntries)
 
-      await transaction.insertEntries(missingEntries)
+        potentiallyUnknownHashes = new Set([...missingEntries.flatMap(entry => entry.previousHashes), ...predecessors])
+  
+        unknownHashes = [...potentiallyUnknownHashes].filter(transaction.contains)
 
-      potentiallyUnknownHashes = new Set([...missingEntries.flatMap(entry => entry.previousHashes), ...predecessors])
-
-      unknownHashes = [...potentiallyUnknownHashes].filter(transaction.contains)
-      await done
-
-      let sendMissingEntriesRequest = remote.requestEntries(unknownHashes)
-      let sendMyEntriesToRemoteRequest = remote.sendEntries(await transaction.getEntries(missingEntriesForRemote))
-      let missingEntriesForRemoteRequest = remote.requestMissingEntryHashesForRemote()
-      let predecessorsForMissingEntriesRequest = remote.requestPredecessors(unknownHashes, 3);
-      remote.flushRequests()
-
-      missingEntries = await sendMissingEntriesRequest
-      await sendMyEntriesToRemoteRequest;
-      missingEntriesForRemote = await missingEntriesForRemoteRequest
-      predecessors = await predecessorsForMissingEntriesRequest // TODO FIXME use
+        missingEntriesForRemote = await transaction.getEntries(missingEntriesForRemote)
+      })
+     
+      await remote.sendEntries(missingEntriesForRemote)
+      missingEntries = await remote.requestEntries(unknownHashes)
+      missingEntriesForRemote = await remote.requestMissingEntryHashesForRemote()
+      predecessors = await remote.requestPredecessors(unknownHashes, 3);
     }
   }
 }
