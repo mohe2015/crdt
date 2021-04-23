@@ -113,7 +113,10 @@ export class WebSocketRemote<T> extends Remote<T> {
         }
         this.socket.send(JSON.stringify(request));
   
-        let onclose = (event: CloseEvent) => {
+        let onclose = (event: {
+          wasClean: boolean; code: number;
+          reason: string; target: WebSocket
+        }) => {
           console.log(event)
   
           this.socket.removeEventListener("message", onmessage)
@@ -122,7 +125,7 @@ export class WebSocketRemote<T> extends Remote<T> {
           reject()
         }
   
-        let onmessage = (event: MessageEvent<string>) => {
+        let onmessage = (event: { data: any; type: string; target: WebSocket }) => {
           console.log(event)
   
           // TODO FIXME put parsing into conditional check
@@ -198,39 +201,5 @@ export class WebSocketRemote<T> extends Remote<T> {
       console.log(JSON.stringify({description: response}));
     }
   
-    flushRequests(): Promise<void> {
-  
-    }
-  
-    async sendHashes(heads: Array<ArrayBuffer>): Promise<void> {
-  
-    }
-  
-    async requestHeadHashes(): Promise<Set<ArrayBuffer>> {
-  
-    }
-  
-    async sendEntries(entries: Array<CmRDTLogEntry<any>>): Promise<void> {
-  
-    }
-  
-    async requestPredecessors(hashes: Array<ArrayBuffer>, depth: number): Promise<Set<ArrayBuffer>> {
-      
-    }
-  
-    /**
-     * This also validates that the remote sent a valid object.
-     * @param keys the key to request from the remote
-     */
-    // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API#concepts_and_usage
-    // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
-    // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
-    async requestEntries(keys: Array<ArrayBuffer>): Promise<Array<CmRDTLogEntry<T>>> {
-  
-    }
-  
-    async requestMissingEntryHashesForRemote(): Promise<Set<ArrayBuffer>> {
-  
-    }
   }
   
