@@ -22,7 +22,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import { exportPublicKey, generateKey } from './crypto';
-import { createLogEntry } from './index';
+import { CmRDTTransaction, createLogEntry } from './index';
 import { IndexedDBCmRDTFactory } from './indexeddb';
 import { WebSocketRemote } from './remote';
 
@@ -43,15 +43,15 @@ async function test() {
     const server1Key = await generateKey();
     const user1Key = await generateKey();
   
-    const [transaction1, done1] = cmrdt.getTransaction(["heads"], "readonly")
-    const heads = await transaction1.getHeads()
-    await done1
+    const heads = await cmrdt.transaction(["heads"], "readonly", async (transaction: CmRDTTransaction<Set<ArrayBuffer>>) => {
+      return await transaction.getHeads()
+    })
     
     const usersMapRoot = await createLogEntry(server1Key, null, heads);
   
-    const [transaction2, done2] = cmrdt.getTransaction(["log", "heads"], "readwrite")
-    await transaction2.insertEntries([usersMapRoot]);
-    await done2
+    await cmrdt.transaction(["log", "heads"], "readwrite", async (transaction) => {
+      return await transaction.insertEntries(new Set([usersMapRoot]));
+    })
   
     const createUser1Entry = await createLogEntry(
       server1Key,
@@ -63,7 +63,7 @@ async function test() {
         passwordHash:
           'this-is-super-secret-and-should-not-be-sent-to-unauthorized-clients',
       },
-      [],
+      new Set(),
     );
   
     const createServer1Entry = await createLogEntry(
@@ -74,7 +74,7 @@ async function test() {
         name: 'Server 1',
         role: 'server',
       },
-      [],
+      new Set(),
     );
   
     const usersMapEntry1 = await createLogEntry(
@@ -83,7 +83,7 @@ async function test() {
         operation: 'put',
         value: createServer1Entry.hash,
       },
-      [usersMapRoot.hash],
+      new Set([usersMapRoot.hash]),
     );
   
     const usersMapEntry2 = await createLogEntry(
@@ -92,7 +92,7 @@ async function test() {
         operation: 'put',
         value: createUser1Entry.hash,
       },
-      [usersMapEntry1.hash],
+      new Set([usersMapEntry1.hash]),
     );
   
     //const entry2 = await createLogEntry(server1Key, 2, [entry1.hash])
@@ -116,7 +116,7 @@ async function test() {
         operation: 'gdpr-delete',
         value: usersMapEntry2.hash,
       },
-      [usersMapEntry2.hash],
+      new Set([usersMapEntry2.hash]),
     );
   
   

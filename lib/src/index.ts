@@ -53,7 +53,7 @@ export type CmRDTLogEntry<T> = Readonly<{
   value: T;
   hash: ArrayBuffer;
   random: ArrayBuffer;
-  previousHashes: ArrayBuffer[];
+  previousHashes: Set<ArrayBuffer>;
   author: ArrayBuffer;
   signature: ArrayBuffer;
 }>;
@@ -106,7 +106,7 @@ export abstract class CmRDT<T> {
       this.transaction(["log"], "readonly", async (transaction) => {
         await transaction.insertEntries(missingEntries)
 
-        potentiallyUnknownHashes = new Set([...[...missingEntries].flatMap(entry => entry.previousHashes), ...predecessors])
+        potentiallyUnknownHashes = new Set([...[...missingEntries].flatMap(entry => [...entry.previousHashes]), ...predecessors])
   
         unknownHashes = new Set([...(await Promise.all([...potentiallyUnknownHashes].map(async (e): Promise<[ArrayBuffer, boolean]> => [e, await transaction.contains(e)]))).filter(e => e[1]).map(e => e[0])])
 
@@ -122,7 +122,7 @@ export abstract class CmRDT<T> {
 }
 
 function cmrdtLogEntrySize<T>(entry: CmRDTLogEntry<T>): number {
-  return stringify(entry.value).length + entry.hash.byteLength + entry.random.byteLength + entry.previousHashes.map(a => a.byteLength).reduce((prev, curr) => prev + curr) + entry.author.byteLength + entry.signature.byteLength
+  return stringify(entry.value).length + entry.hash.byteLength + entry.random.byteLength + [...entry.previousHashes].map(a => a.byteLength).reduce((prev, curr) => prev + curr) + entry.author.byteLength + entry.signature.byteLength
 }
 
 export async function hashObject<T>(object: T): Promise<ArrayBuffer> {
@@ -157,7 +157,7 @@ export async function hashObject<T>(object: T): Promise<ArrayBuffer> {
 export async function createLogEntry<T>(
   signKey: CryptoKeyPair,
   value: T,
-  previousHashes: ArrayBuffer[],
+  previousHashes: Set<ArrayBuffer>,
 ): Promise<CmRDTLogEntry<T>> {
   const objectHash = await hashObject(value);
   const author = await exportPublicKey(signKey);
@@ -166,12 +166,12 @@ export async function createLogEntry<T>(
       author.byteLength +
       objectHash.byteLength +
       random.byteLength +
-      previousHashes.reduce<number>((prev, curr) => prev + curr.byteLength, 0),
+      [...previousHashes].reduce<number>((prev, curr) => prev + curr.byteLength, 0),
   );
   everything.set(new Uint8Array(author), 0);
   everything.set(new Uint8Array(objectHash), author.byteLength);
   everything.set(random, author.byteLength + objectHash.byteLength);
-  previousHashes.reduce<number>((prev, curr) => {
+  [...previousHashes].reduce<number>((prev, curr) => {
     everything.set(new Uint8Array(curr), prev);
     return prev + curr.byteLength;
   }, author.byteLength + objectHash.byteLength + random.byteLength);

@@ -35,7 +35,7 @@ export class IndexedDBCmRDTTransaction<T> extends CmRDTTransaction<T> {
       for (const entry of entries) {
         await this.handleRequest(logObjectStore.add(entry));
         await this.handleRequest(headsObjectStore.add(entry.hash))
-        await Promise.all(entry.previousHashes.map(h => this.handleRequest(headsObjectStore.delete(h))))
+        await Promise.all([...entry.previousHashes].map(h => this.handleRequest(headsObjectStore.delete(h))))
       }
     }
   

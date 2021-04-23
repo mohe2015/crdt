@@ -38,8 +38,8 @@ export class PostgresCmRDT<T> extends CmRDT<T> {
 
     async transaction<T>(storeNames: Iterable<string>, mode: IDBTransactionMode, cb: (transaction: PostgresCmRDTTransaction<T>) => Promise<T>): Promise<T> {
         return await this.sql.begin(async sql => {
-            return await cb(new PostgresCmRDTTransaction(sql))
-        })
+            return await cb(new PostgresCmRDTTransaction<T>(sql))
+        }) as T // TODO FIXME
     }
 }
 
