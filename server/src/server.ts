@@ -72,7 +72,7 @@ async function main() {
     // @ts-expect-error
     const wss = new WebSocket.Server({ server });
 
-    const cmrdt = await (new PostgresCmRDTFactory()).initialize<{operation: string, value: ArrayBuffer}|null>("a");
+    const cmrdt = await (new PostgresCmRDTFactory()).initialize<{operation: string, value: ArrayBuffer}|null>("crdt");
     console.log(cmrdt)
 
     wss.on('connection', (ws, req) => {
