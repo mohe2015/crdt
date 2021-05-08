@@ -30,7 +30,7 @@
       nixosConfigurations.crdt-postgresql = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [
-          ({ ... }: {
+          ({ config, ... }: {
             boot.isContainer = true;
 
             networking.hostName = "crdt-psql";
@@ -38,10 +38,28 @@
             services.postgresql = {
               enable = true;
               enableTCPIP = true; # ONLY use for containers that are protected from external networks
-              authentication = "hostnossl crdt crdt 10.233.1.1 255.255.255.255 md5";
+              authentication = "hostnossl crdt crdt 10.233.1.1 255.255.255.255 scram-sha-256";
+              settings = {
+                "password_encryption" = "scram-sha-256";
+              };
             };
-
             networking.firewall.allowedTCPPorts = [ 5432 ];
+
+            systemd.services.crdt-init = {
+              after = [ "postgresql.service" ];
+              wantedBy = [ "multi-user.target" ];
+
+              serviceConfig = {
+                Type = "oneshot";
+                User = "postgres";
+                Group = "postgres";
+                ExecStart = let psqlSetupCommands = pkgs.writeText "crdt-init.sql" ''
+                  SELECT 'CREATE ROLE "crdt" LOGIN PASSWORD ''\'''\'crdt''\'''\'' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'crdt')\gexec
+                  SELECT 'CREATE DATABASE "crdt" OWNER "crdt" TEMPLATE template0 ENCODING UTF8' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'crdt')\gexec
+                  \c 'crdt'
+                ''; in "${config.services.postgresql.package}/bin/psql -f ${psqlSetupCommands}";
+              };
+            };
 
             system.stateVersion = "21.05";
           })
