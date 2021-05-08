@@ -8,4 +8,4 @@ web_modules
 node_modules
 annotations.json
 *.pem
-.tmp/
+.tmp

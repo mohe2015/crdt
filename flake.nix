@@ -38,7 +38,7 @@
             services.postgresql = {
               enable = true;
               enableTCPIP = true; # ONLY use for containers that are protected from external networks
-              authentication = "hostnossl crdt crdt 10.233.1.1 255.255.255.255 pam";
+              authentication = "hostnossl crdt crdt 10.233.1.1 255.255.255.255 md5";
             };
 
             networking.firewall.allowedTCPPorts = [ 5432 ];
