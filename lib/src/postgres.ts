@@ -27,9 +27,12 @@ import postgres from 'postgres'
 export class PostgresCmRDTFactory implements CmRDTFactory {
     async initialize<T>(databaseName: string): Promise<CmRDT<T>> {
        let sql = postgres({
-           database: databaseName,
-            ssl: true
-       })
+            host: "crdt-psql",
+            database: databaseName,
+            username: "crdt",
+            password: "crdt",
+            debug: true
+        })
        let cmrdt = new PostgresCmRDT<T>(sql);
        await cmrdt.transaction([], "readwrite", async (sql: PostgresCmRDTTransaction<any>) => {
             await sql.sql`CREATE TABLE IF NOT EXISTS log (
@@ -37,14 +40,14 @@ export class PostgresCmRDTFactory implements CmRDTFactory {
                 random bytea NOT NULL,
                 author bytea NOT NULL,
                 signature bytea NOT NULL,
-                value bytea NOT NULL, 
+                value bytea NOT NULL
             )`
             await sql.sql`CREATE TABLE IF NOT EXISTS log_previous_hashes (
                 hash bytea NOT NULL references log(hash),
-                previous_hash bytea NOT NULL references log(hash),
+                previous_hash bytea NOT NULL references log(hash)
             )`
             await sql.sql`CREATE TABLE IF NOT EXISTS heads (
-                hash bytea NOT NULL references log(hash),
+                hash bytea NOT NULL references log(hash)
             )`
        })
        return cmrdt
