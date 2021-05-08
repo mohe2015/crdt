@@ -22,10 +22,6 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import type { Serializable } from "./serialization";
-
-export {}
-
 // https://www.jsonrpc.org/specification
 // not completely standards compliant, more minimal
 

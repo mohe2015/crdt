@@ -32,9 +32,9 @@ import {
   exportPublicKey,
   hashArrayBuffer,
   sign,
-} from './crypto';
+} from './crypto.js';
 import crypto from '@dev.mohe/isomorphic-webcrypto';
-import type { Remote } from './remote';
+import type { Remote } from './remote.js';
 
 // TODO use https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist
 

@@ -21,7 +21,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import { CmRDT, CmRDTFactory, CmRDTLogEntry, CmRDTTransaction } from "./index"
+import { CmRDT, CmRDTFactory, CmRDTLogEntry, CmRDTTransaction } from "./index.js"
 import postgres from 'postgres'
 
 export class PostgresCmRDTFactory implements CmRDTFactory {

@@ -21,9 +21,9 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import type { CmRDT, CmRDTLogEntry } from "./index"
-import type { JSONRPCHandler, JSONRPCRequest } from "./json-rpc"
-import { Serializable, SetOfArrayBuffers, StringToErrorSerializer, Void } from "./serialization"
+import type { CmRDT, CmRDTLogEntry } from "./index.js"
+import type { JSONRPCHandler, JSONRPCRequest } from "./json-rpc.js"
+import { Serializable, SetOfArrayBuffers, StringToErrorSerializer, Void } from "./serialization.js"
 import WebSocket from 'isomorphic-ws';
 
 // https://developer.mozilla.org/en-US/docs/Web/API
