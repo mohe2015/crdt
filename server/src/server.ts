@@ -75,20 +75,11 @@ async function main() {
     const cmrdt = await (new PostgresCmRDTFactory()).initialize<{operation: string, value: ArrayBuffer}|null>("crdt");
     console.log(cmrdt)
 
-    wss.on('connection', (ws, req) => {
+    wss.on('connection', async (ws, req) => {
         const ip = req.socket.remoteAddress;
-        ws.on('message', async (message) => {
-            console.log('received: %s', message);
-
-            let result = JSON.parse(message.toString())
-
-            console.log("result: ", result)
-
-            const remote = new WebSocketRemote<any>(cmrdt, ws);
-            await remote.connect()
-            remote.handleRequests()
-        });
-        ws.send('{"id": "1", "method": "headHashes", "params": null}');
+        
+        const remote = new WebSocketRemote<any>(cmrdt, ws);
+        remote.handleRequests()
     });
 
     server.listen(8888);
