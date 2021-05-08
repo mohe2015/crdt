@@ -115,6 +115,22 @@ export class WebSocketRemote<T> extends Remote<T> {
       }
     }
 
+    sendHashes: JSONRPCHandler<Set<ArrayBuffer>, void> = null!;
+    sendEntries: JSONRPCHandler<Set<Readonly<{
+      value: any; hash: ArrayBuffer; random: ArrayBuffer; previousHashes: Set<ArrayBuffer>; // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
+      // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
+      // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
+      author: ArrayBuffer; signature: ArrayBuffer;
+    }>>, void> = null!;
+    requestEntries: JSONRPCHandler<Set<ArrayBuffer>, Promise<Set<Readonly<{
+      value: T; hash: ArrayBuffer; random: ArrayBuffer; previousHashes: Set<ArrayBuffer>; // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
+      // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Concepts
+      // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
+      author: ArrayBuffer; signature: ArrayBuffer;
+    }>>>> = null!;
+    requestHashesOfMissingEntries: JSONRPCHandler<void, Set<ArrayBuffer>> = null!;
+    requestPredecessors: JSONRPCHandler<Set<ArrayBuffer>, Set<ArrayBuffer>> = null!;
+
     async genericResponseHandler<P, P_ extends Serializable<P>, R, R_ extends Serializable<R>, E extends Error, E_ extends Serializable<E>>(name: string, params: P_, result: R_, error: E_, callback: (i: P) => Promise<R>): Promise<object> {
       try {
         let response = await callback(params.get())
@@ -171,7 +187,7 @@ export class WebSocketRemote<T> extends Remote<T> {
     }
   }
   
-  class WebRTCRemote<T> extends Remote<T> {
+  abstract class WebRTCRemote<T> extends Remote<T> {
     // TODO https://www.w3.org/TR/webrtc/#perfect-negotiation-example
     // initial bootstrap needs to be manual so we don't depend on a server (for now at least)
     // as webrtc is quite complicated maybe provide alternative bootstrap using websockets (preferably with your own server)
