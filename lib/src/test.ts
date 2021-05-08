@@ -32,7 +32,7 @@ async function assertEqual<T>(actual: T, expected: T) {
     }
 }
 
-async function test() {
+export async function test() {
     const cmrdt = await (new IndexedDBCmRDTFactory()).initialize<{operation: string, value: ArrayBuffer}|null>("a");
 
     const remote = new WebSocketRemote<any>(cmrdt);
@@ -192,5 +192,3 @@ async function test() {
     */
   
   }
-  
-  test()
