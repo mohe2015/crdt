@@ -4,6 +4,8 @@ SPDX-FileCopyrightText: 2020 Moritz Hedtke <Moritz.Hedtke@t-online.de>
 SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
+https://localhost:8888/ add exception to your browser
+
 https://nodejs.org/api/packages.html
 
 https://nodejs.org/api/esm.html

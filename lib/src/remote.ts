@@ -68,7 +68,7 @@ export class WebSocketRemote<T> extends Remote<T> {
   
     connect(): Promise<void> {
       return new Promise((resolve, reject) => {
-        this.socket = new WebSocket("wss://localhost:8888")
+        this.socket = this.socket || new WebSocket("wss://localhost:8888")
         //socket.binaryType = "blob" // vs arraybuffer
     
         this.socket.addEventListener("error", (event) => {

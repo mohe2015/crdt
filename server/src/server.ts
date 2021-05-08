@@ -51,7 +51,7 @@ async function main() {
 
         console.log("generated certificate")*/
 
-        // openssl req -nodes -new -x509 -keyout key.pem -out cert.pem
+        // nix run nixpkgs#openssl -- req -nodes -new -x509 -keyout key.pem -out cert.pem
         console.log("missing cert.pem && key.pem")
         return;
     }
@@ -82,7 +82,7 @@ async function main() {
 
             let result = JSON.parse(message.toString())
 
-            console.log(result)
+            console.log("result: ", result)
 
             const remote = new WebSocketRemote<any>(cmrdt, ws);
             await remote.connect()
