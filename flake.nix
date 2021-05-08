@@ -22,10 +22,11 @@
       };
       # TODO FIXME can't set the timeout for imperative containers and this breaks
 
-      # sudo nixos-container create crdt-psql --flake .#crdt-postgresql
-      # sudo nixos-container start  crdt-psql
-      # sudo nixos-container stop   crdt-psql
-      # sudo nixos-container update crdt-psql --flake .#crdt-postgresql # maybe stop before?
+      # sudo nixos-container create     crdt-psql --flake .#crdt-postgresql
+      # sudo nixos-container start      crdt-psql
+      # sudo nixos-container root-login crdt-psql
+      # sudo nixos-container stop       crdt-psql
+      # sudo nixos-container update     crdt-psql --flake .#crdt-postgresql # maybe stop before?
       # psql -h crdt-psql -U crdt
       nixosConfigurations.crdt-postgresql = nixpkgs.lib.nixosSystem {
         inherit system;
@@ -37,7 +38,8 @@
 
             services.postgresql = {
               enable = true;
-              enableTCPIP = true; # ONLY use for containers that are protected from external networks
+              package = pkgs.postgresql_13;
+              enableTCPIP = true;
               authentication = "hostnossl crdt crdt 10.233.1.1 255.255.255.255 scram-sha-256";
               settings = {
                 "password_encryption" = "scram-sha-256";
