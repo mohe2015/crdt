@@ -2,10 +2,10 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-.build
-build
-web_modules
-node_modules
-annotations.json
-*.pem
-.tmp
+{
+  inputs = {
+    crdt.url = "path:..";
+  };
+
+  outputs = { self, crdt }: crdt;
+}

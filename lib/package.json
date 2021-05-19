@@ -1,0 +1,40 @@
+{
+  "name": "@dev.mohe/crdt-lib",
+  "version": "0.0.1",
+  "description": "",
+  "type": "module",
+  "module": "./src/index.ts",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./src/crypto": "./src/crypto.ts",
+    "./src/indexeddb": "./src/indexeddb.ts",
+    "./src/json-rpc": "./src/json-rpc.ts",
+    "./src/postgres": "./src/postgres.ts",
+    "./src/remote": "./src/remote.ts",
+    "./src/serialization": "./src/serialization.ts",
+    "./src/test": "./src/test.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
+  },
+  "author": "Moritz Hedtke <Moritz.Hedtke@t-online.de>",
+  "license": "AGPL-3.0-or-later",
+  "dependencies": {
+    "@dev.mohe/isomorphic-webcrypto": "^1.0.0",
+    "@types/ws": "^7.4.1",
+    "fast-json-stable-stringify": "^2.1.0",
+    "isomorphic-ws": "^4.0.1",
+    "postgres": "^2.0.0-beta.4",
+    "ws": "^7.4.4"
+  },
+  "devDependencies": {
+    "@types/node": "^14.14.37",
+    "@typescript-eslint/eslint-plugin": "^4.21.0",
+    "@typescript-eslint/parser": "^4.21.0",
+    "eslint": "^7.24.0",
+    "typescript": "^4.2.4"
+  }
+}

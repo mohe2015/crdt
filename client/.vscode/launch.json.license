@@ -1,4 +1,4 @@
-projektwahl - Diese Software kann eine Projektwahl verwalten, wie sie beispielsweise für eine Projektwoche benötigt wird.
+crdt - Conflict-free Replicated Data Types in Typescript
 
 Copyright (C) 2020 Moritz Hedtke <Moritz.Hedtke@t-online.de>
 

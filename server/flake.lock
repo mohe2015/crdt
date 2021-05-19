@@ -1,5 +1,19 @@
 {
   "nodes": {
+    "crdt": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "narHash": "sha256-FaOotObvJLmBLts/4V7HqUZLiL/Tc+g6Qfa/2tXwetI=",
+        "path": "..",
+        "type": "path"
+      },
+      "original": {
+        "path": "..",
+        "type": "path"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1620478564,
@@ -17,7 +31,7 @@
     },
     "root": {
       "inputs": {
-        "nixpkgs": "nixpkgs"
+        "crdt": "crdt"
       }
     }
   },

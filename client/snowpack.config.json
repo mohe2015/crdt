@@ -1,4 +1,5 @@
 {
+  "workspaceRoot": "..",
   "mount": {
     "public": "/",
     "src": "/_dist_"
@@ -9,7 +10,7 @@
       { "cmd": "tsc --noEmit", "watch": "$1 --watch" }
     ]
   ],
-  "installOptions": {
+  "packageOptions": {
     "installTypes": true
   }
 }
